@@ -27,124 +27,177 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import urllib.parse
 import requests
+from user_auth import user_auth
 
 
 class Module:
     def __init__(self):
-        self.commands = ['weather']
+        self.commands = ['weather', 'weather_set', 'weather_auth']
         self.helpmsg = [
             "Usage: .weather <Location / Airport code / @domain / IP address"
             " / Area code / GPS coordinates>",
             " ",
-            "Show weather information from http://wttr.in"]
+            "Show weather information from http://wttr.in",
+            ".weather      : Get weather information.",
+            ".weather_set  : Set your location",
+            ".weather_auth : Enable/Disable NickServ authentication for ",
+            "                .weather_set",
+            " ",
+            "If a location has been set, calling .weather without arguments",
+            "will return the weather for that location, otherwise you will be",
+            "asked to provide a location.",
+            "To unset your location use .weather_set without any arguements."]
 
 
-def url2str(query):
-    return urllib.parse.unquote_plus(query)
+# Helper functions:
+
+def unit_swap(unit):
+    """Change the unit string from °C to °F or from km/h to mph and opposite"""
+    unit_d = {
+        "°C": "°F",
+        "°F": "°C",
+        "km/h": "mph",
+        "mph": "km/h"
+        }
+    return unit_d.get(unit)
 
 
-# Temperature string formatting functions
-def temp_color(temp, unit):
-    tempcol_d = {
-        -12: '02', -9: '12', -6: '11', 2: '10',
-        10: '03', 19: '09', 28: '08', 37: '07'
+# Temperature
+
+def temperature_color(temperature, unit_in, unit_out):
+    """Colorize and convert the temperature."""
+    tempcolor_d = {  # celsius: color
+        -12: "02", -9: "12", -6: "11", 2: "10",
+        10: "03", 19: "09", 28: "08", 37: "07"
     }
-
-    if unit == '°C':
-        t = int(temp)
+    if "°C" == unit_in:
+        celsius = int(temperature)
+        fahrenheit = celsius * 1.8 + 32
+        fahrenheit = int(round(fahrenheit, 0))
+    elif "°F" == unit_in:
+        fahrenheit = int(temperature)
+        celsius = (fahrenheit - 32) / 1.8
+        celsius = int(round(celsius, 0))
     else:
-        t = (int(temp) - 32) / 1.8  # Convert Fahrenheit to Celsius.
+        return "invalid input unit"
 
-    for k, v in tempcol_d.items():
-        if t < k:
-            return f'\x03{v} {temp}\x0F'
+    for temp, color in tempcolor_d.items():
+        if celsius <= temp:
+            if "°C" == unit_out:
+                return f"\x03{color} {celsius}\x0F"
+            elif "°F" == unit_out:
+                return f"\x03{color} {fahrenheit}\x0F"
+
+    # Fallback for when the temperature is too high.
+    if "°C" == unit_out:
+        return f"\x0304 {celsius}\x0F"
+    elif "°F" == unit_out:
+        return f"\x0304 {fahrenheit}\x0F"
+
+
+def temp_format_range(temp_list, unit, unit_s):
+    ret = "Temp:"
+    ret += f"{temperature_color(temp_list[0], unit, unit)} -"
+    ret += f"{temperature_color(temp_list[1], unit, unit)} {unit} /"
+    ret += f"{temperature_color(temp_list[0], unit, unit_s)} -"
+    ret += f"{temperature_color(temp_list[1], unit, unit_s)} {unit_s}"
+    return ret
 
 
 def temp_format(txt):
-    def range_hdl(t, tempstr):
-        for idx, i in enumerate(t):
-            coltemp = temp_color(i, u)
-            tempstr += f'{coltemp}'
-            if idx == 0:
-                tempstr += ' -'
-        return tempstr
+    temperature_list = txt.split()  # ['25-27', '°C']
+    temperature = temperature_list[0]
+    dashes = temperature.count('-')
+    unit = temperature_list[1]
+    unit_s = unit_swap(unit)
+    ret = "Temp:"
 
-    temp_ls = txt.split()
-    t = temp_ls[0]
-    u = temp_ls[1]
-    d = t.count('-')
-    tempstr = 'Temp:'
+    if 1 == dashes:
+        if not temperature[0] == '-':  # 25-27 °C
+            temp_list = temperature.split('-')  # ['25', '27']
+            ret = temp_format_range(temp_list, unit, unit_s)
+        else:  # -5 °C
+            ret += f"{temperature_color(temperature, unit, unit)} {unit} /"
+            ret += f"{temperature_color(temperature, unit, unit_s)} {unit_s}"
+    elif 2 == dashes:  # -2-0 °C
+        temp_list = temperature.split('-', 2)  # ['', '2', '0']
+        temp_list = [f'-{temp_list[1]}', temp_list[2]]
+        ret = temp_format_range(temp_list, unit, unit_s)
+    elif 3 == dashes:  # -5--2
+        temp_list = temperature.split('-', 2)  # ['', '-5', '-2']
+        temp_list = [f'-{temp_list[1]}', temp_list[2]]
+        ret = temp_format_range(temp_list, unit, unit_s)
+    else:  # 5 °C
+        ret += f"{temperature_color(temperature, unit, unit)} {unit} /"
+        ret += f"{temperature_color(temperature, unit, unit_s)} {unit_s}"
 
-    if d == 1:
-        if not t[0] == '-':
-            t = t.split('-')
-            tempstr = range_hdl(t, tempstr)
-        else:
-            coltemp = temp_color(t, u)
-            tempstr += f'{coltemp}'
-    elif d == 2:
-        t = t.split('-', 2)
-        t = [f'-{t[1]}', t[2]]
-        tempstr = range_hdl(t, tempstr)
-    elif d == 3:
-        t = t.split('-', 2)
-        t = [f'-{t[1]}', t[2]]
-        tempstr = range_hdl(t, tempstr)
-    else:
-        coltemp = temp_color(t, u)
-        tempstr += f'{coltemp}'
-    return f'{tempstr} {u}'
+    return ret
 
 
-# Wind string formatting functions
-def wind_color(wind, unit):
-    windcol_d = {
-        4: '03', 10: '09', 20: '08', 32: '07'
+# Wind
+
+def wind_color(wind, unit_in, unit_out):
+    windcolor_d = {  # km/h: color
+        4: "03", 10: "09", 20: "08", 32: "07"
     }
-    if unit == 'km/h':
-        w = int(wind)
-    elif unit == 'mph':
-        w = int(wind) * 1.609344  # Convert mph to km/h.
-    elif unit == 'm/s':
-        w = int(wind) * 3.6  # Convert m/s to km/h.
+    if "km/h" == unit_in:
+        kmh = int(wind)
+        mph = kmh * 0.6213711922
+        mph = int(round(mph, 0))
+    elif "mph" == unit_in:
+        mph = int(wind)
+        kmh = mph * 1.609344
+        kmh = int(round(kmh, 0))
+    # elif "m/s" == unit_in:
+    #     ms = int(wind)
+    #     kmh = ms * 3.6
 
-    for k, v in windcol_d.items():
-        if w < k:
-            return f'\x03{v} {wind}\x0F'
-    # If the wind speed is higher than the values in the dict use red.
-    return f'\x0304 {wind}\x0F'
+    for k, color in windcolor_d.items():
+        if kmh < k:
+            if "km/h" == unit_out:
+                return f"\x03{color} {kmh}\x0F"
+            elif "mph" == unit_out:
+                return f"\x03{color} {mph}\x0F"
+
+    # Fallback for when the wind speed is too high.
+    if "km/h" == unit_out:
+        return f"\x0304 {kmh}\x0F"
+    elif "mph" == unit_out:
+        return f"\x0304 {mph}\x0F"
 
 
 def wind_format(txt):
     def range_hdl(t, tempstr):
         for idx, i in enumerate(t):
-            coltemp = wind_color(i, u)
+            coltemp = wind_color(i, unit)
             tempstr += f'{coltemp}'
             if idx == 0:
                 tempstr += ' -'
         return tempstr
 
-    w_ls = txt.split()
-    i = w_ls[0]
-    w = w_ls[1]
-    u = w_ls[2]
-    d = w.count('-')
-    windstr = f'Wind: {i}'
+    wind_list = txt.split()  # ['↑', '23', 'km/h']
+    icon = wind_list[0]
+    wind = wind_list[1]
+    unit = wind_list[2]
+    unit_s = unit_swap(unit)
+    dashes = wind.count('-')
+    ret = f'Wind: {icon}'
 
-    if d == 1:
-        if not w[0] == '-':
-            t = w.split('-')
-            windstr = range_hdl(w, windstr)
-        else:
-            coltemp = wind_color(w, u)
-            windstr += f'{coltemp}'
-    else:
-        coltemp = wind_color(w, u)
-        windstr += f'{coltemp}'
-    return f'{windstr} {u}'
+    if 1 == dashes:
+        # NEEDLESS?
+        wind_list = wind.split('-')
+        ret += f"{wind_color(wind_list[0], unit, unit)} -"
+        ret += f"{wind_color(wind_list[1], unit, unit)} {unit} /"
+        ret += f"{wind_color(wind_list[0], unit, unit_s)} -"
+        ret += f"{wind_color(wind_list[1], unit, unit_s)} {unit_s}"
+    else:  # 17 km/h
+        ret += f"{wind_color(wind, unit, unit)} {unit} /"
+        ret += f"{wind_color(wind, unit, unit_s)} {unit_s}"
+
+    return f'{ret}'
 
 
-def colorize(txt):
+def handler(txt):
     if ('°C' in txt) or ('°F' in txt):
         return temp_format(txt)
     elif ('km/h' in txt) or ('mph' in txt) or ('m/s' in txt):
@@ -177,7 +230,7 @@ art = (
     '   (___(__)  ',
     '  ‚ʻ‚ʻ‚ʻ‚ʻ   ',
     ' _`/"".-.    ',
-    '  ,\_(   ).  ',
+    '  ,\\_(   ).  ',
     '   /(___(__) ',
     '   ‚ʻ‚ʻ‚ʻ‚ʻ  ',
     '   ‚’‚’‚’‚’  ',
@@ -197,40 +250,39 @@ art = (
     '   *  *  *   ',
     '     *  *  * ',
     '    *  *  *  ',
-    '   \  /      ',
+    '   \\  /      ',
     ' _ /"".-.    ',
-    '   \_(   ).  ',
-    '    \   /    ',
+    '   \\_(   ).  ',
+    '    \\   /    ',
     '  ‒ (   ) ‒  ',
-    '    /   \    ',
+    '    /   \\    ',
     '  ‚ʻ⚡ʻ‚⚡‚ʻ   ',
     '  ‚ʻ‚ʻ⚡ʻ‚ʻ   ',
     '    ⚡ʻ ʻ⚡ʻ ʻ ',
     '     *⚡ *⚡ * ',
     '  ― (   ) ―  ',
-    '     `-’     '
+    '     `-’     ',
+    '   ⚡‘‘⚡‘‘  '
 )
 
 
-def wttr(irc, channel, location, unit=False, lang=False):
-    if unit:
-        u = unit
-    else:
-        u = ''
-    if lang:
-        lg = f'&lang={lang}'
-    else:
-        lg = ''
+def wttr(irc, channel, location):
+    if location == 'moon' or 'moon@' in location:
+        irc.privmsg(channel, 'This is not supported yet '
+                    '(add ,+US or ,+France for these cities)')
+        return
 
-    url = f'http://wttr.in/{location}?0T{u}{lg}'
+    location = urllib.parse.quote_plus(location)
+    url = f'http://wttr.in/{location}?0Tm'
     r = requests.get(url, timeout=10).text.splitlines()
     text = ''
     for line in r:
         for i in art:
             line = line.replace(i, '')
         if line:
-            line = colorize(line)
+            line = handler(line)
             text += f'{line} | '
+
     text = " ".join(text.split())  # Remove additional spaces.
     text = text.lstrip("Rainfall: ")  # Remove 'Rainfall: ' from the front.
     if "ERROR: Unknown location:" in text:
@@ -239,18 +291,106 @@ def wttr(irc, channel, location, unit=False, lang=False):
          or ("Sorry, we are running out of queries to the weather service at "
              "the moment.") in text:
         text = "\x0304wttr.in: API call limit reached. Try again tomorrow."
+
     irc.privmsg(channel, text)
 
 
+# Authentication
+
+def set_auth(i, irc, dbc):
+    if not user_auth(i, irc, i.nickname):
+        return f"{i.nickname}: You are not logged in with NickServ."
+
+    dbc.execute('SELECT auth FROM weather WHERE nickname=?;',
+                (i.nickname,))
+    fetch = dbc.fetchone()
+
+    try:
+        auth = fetch[0]
+    except TypeError:  # 'NoneType' object is not subscriptable
+        auth = 0
+
+    if auth == 0:
+        auth = 1
+        msg = f'{i.nickname}: weather: Enabled NickServ authentication.'
+    elif auth == 1:
+        auth = 0
+        msg = f'{i.nickname}: weather: Disabled NickServ authentication.'
+
+    dbc.execute(
+        "INSERT OR IGNORE INTO weather (nickname, auth) VALUES (?, ?);",
+        (i.nickname, auth))
+    dbc.execute("UPDATE weather SET auth=? WHERE nickname=?;",
+                (auth, i.nickname))
+    return msg
+
+
+def get_auth(i, irc, dbc):
+    dbc.execute('SELECT auth FROM weather WHERE nickname=?;', (i.nickname,))
+    fetch = dbc.fetchone()
+    try:
+        auth = fetch[0]
+    except TypeError:  # 'NoneType' object is not subscriptable
+        auth = 0
+
+    if auth == 0:
+        return True
+    elif auth == 1 and user_auth(i, irc, i.nickname):
+        return True
+    else:
+        return False
+
+
+def set_location(i, irc, dbc, location):
+    if not get_auth(i, irc, dbc):
+        return f"{i.nickname}: weather: NickServ authentication is required."
+    dbc.execute(
+        '''INSERT OR IGNORE INTO weather (nickname, location)
+        VALUES (?, ?);''', (i.nickname, location))
+    dbc.execute('''UPDATE weather SET location=? WHERE nickname=?;''',
+                (location, i.nickname))
+    return f'{i.nickname}: weather: Your location was set to "{location}"'
+
+
+def get_location(dbc, nickname):
+    try:
+        dbc.execute(
+            'SELECT location FROM weather WHERE nickname=?;', (nickname,))
+        return dbc.fetchone()[0]
+    except Exception:
+        return False
+
+
 def main(i, irc):
-    if not i.msg_nocmd:
-        msg = (f'Usage: {i.cmd_prefix}{i.cmd} <Location / Airport code /'
-               ' @domain / IP address / Area code / GPS coordinates>')
-        return irc.privmsg(i.channel, msg)
+    dbc = i.db[1].cursor()
 
-    q = urllib.parse.quote_plus(i.msg_nocmd)
-    if i.msg_nocmd == 'moon' or 'moon@' in i.msg_nocmd:
-        return irc.privmsg(i.channel, 'This is not supported yet '
-                           '(add ,+US or ,+France for these cities)')
+    try:
+        dbc.execute(
+            '''CREATE TABLE IF NOT EXISTS weather (nickname TEXT COLLATE NOCASE
+            PRIMARY KEY, location TEXT, auth INTEGER DEFAULT 0);''')
+    except Exception:
+        # sqlite3.OperationalError: cannot commit - no transaction is active
+        pass
 
-    wttr(irc, i.channel, q)
+    if "weather" == i.cmd:
+
+        if not i.msg_nocmd:
+            location = get_location(dbc, i.nickname)
+            if location:
+                wttr(irc, i.channel, location)
+            else:
+                msg = (f'Usage: {i.cmd_prefix}{i.cmd} '
+                       '<Location / Airport code / @domain / '
+                       'IP address / Area code / GPS coordinates>')
+                irc.privmsg(i.channel, msg)
+        else:
+            wttr(irc, i.channel, i.msg_nocmd)
+
+    elif "weather_set" == i.cmd:
+        ret = set_location(i, irc, dbc, i.msg_nocmd)
+        i.db[1].commit()
+        irc.privmsg(i.channel, ret)
+    elif "weather_auth" == i.cmd:
+        ret = set_auth(i, irc, dbc)
+        i.db[1].commit()
+        irc.privmsg(i.channel, ret)
