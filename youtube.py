@@ -3,13 +3,11 @@
 
 # YouTube Module for Drastikbot
 #
-# Search YouTube and return the resulting video. Hooktube urls are also
-# supported at your option.
-# When a YouTube/hooktube is posted return the video's information and a url to
-# the opposite service.
+# Search YouTube and return the resulting video.
+# When a YouTube url is posted return the video's information.
 #
 # If you are planning to use the url module or a url bot, consider adding the
-# following blacklist: ['hooktube.com/', 'youtu.be/', 'youtube.com/watch']
+# following blacklist: ['youtu.be/', 'youtube.com/watch']
 #
 # Depends:
 #   - requests      :: $ pip3 install requests
@@ -50,18 +48,15 @@ class Module:
 
 # ----- Constants ----- #
 auto_rslv = True  # Automatically post video info when a url is posted.
-ar_min = True  # Minimal information show on auto_rslv (hooktube, length).
+ar_min = True  # Minimal information show on auto_rslv (channel, length).
 title = True
-hooktube = True  # Support hooktube
 parser = 'html.parser'
 lang = "en-US"
 # --------------------- #
 
 
 def yt_vid_info(url):
-    '''
-    Visit a video and get it's information.
-    '''
+    '''Visit a video and get it's information.'''
     r = requests.get(url, headers={"Accept-Language": lang}, timeout=10)
     soup = bs4.BeautifulSoup(r.text, parser)
     date = soup.find(attrs={"itemprop": "datePublished"})['content']
@@ -83,8 +78,9 @@ def yt_vid_info(url):
     else:
         secs = duration[1]
     duration = f'{mins}:{secs}'
-    result = (name, date, views, genre, channel, likes, dislikes, duration,
-              yt_id)
+    result = {'name': name, 'date': date, 'views': views,
+              'genre': genre, 'channel': channel, 'likes': likes,
+              'dislikes': dislikes, 'duration': duration, 'yt_id': yt_id}
     return result
 
 
@@ -93,8 +89,8 @@ def yt_search(query):
     Search YouTube for 'query' and get a video from the search results.
     It tries to visit the video found to ensure that it is valid.
     Returns:
-        - 'u' : YouTube url to the result video.
-        - False   : If no video is found for 'query'.
+        - 'u'   : YouTube url to the result video.
+        - False : If no video is found for 'query'.
     '''
     search = f'https://www.youtube.com/results?search_query={query}'
     r = requests.get(search, headers={"Accept-Language": lang}, timeout=10)
@@ -123,37 +119,32 @@ def yt_search(query):
 
 
 def output(yt_url, rslv=False, ht_url=False):
-    '''
-    Format the output message to be returned.
-    '''
-    logo_yt = '\x0301,00You\x0300,04Tube\x0F'
-    logo_ht = '\x0301,00{\x0314,00}\x0F'
+    '''Format the output message to be returned.'''
+    logo_yt = "\x0301,00You\x0300,04Tube\x0F"
     i = yt_vid_info(yt_url)
-    yt_id = i[8]
-    yt = f'https://youtu.be/{yt_id} |'
-    ht = f'{logo_ht}: https://hooktube.com/{yt_id}'
-    t = f' \x02{i[0]}\x0F'
-    if not hooktube:
-        ht = ''
+    yt_id = i['yt_id']
+    yt = f"https://youtu.be/{yt_id} |"
+    t = f" \x02{i['name']}\x0F"
     if not title and rslv:
-        t = ''
+        t = ""
     if rslv and ht_url:
-        ht = ''
+        ht = ""
     elif rslv and not ht_url:
-        yt = ''
+        yt = ""
     if ar_min and rslv:
-        out = (f'{logo_yt}: {yt}'
-               f'{t} ({i[7]})'
-               f' | {ht}')
+        out = (f"{logo_yt}: {yt}"
+               f"{t} ({i['duration']})"
+               f" | \x02Channel:\x0F {i['channel']}")
     else:
-        out = (f'{logo_yt}: {yt}'
-               f'{t} ({i[7]})'
-               f' | \x02Views:\x0F {i[2]}'
-               f' | \x02Channel\x0F: {i[4]}'
-               f' | \x02Date:\x0F {i[1]}'
-               f' | \x0303+{i[5]}\x0F'
-               f' | \x0304-{i[6]}\x0F'
-               f' | {ht}')
+        out = (f"{logo_yt}: {yt}"
+               f"{t} ({i['duration']})"
+               f" | \x02Views:\x0F {i['views']}"
+               f" | \x02Channel\x0F: {i['channel']}"
+               f" | \x02Date:\x0F {i['date']}"
+               f" | \x02Genre:\x0F {i['genre']}"
+               f" | \x0303+{i['likes']}\x0F"
+               f" | \x0304-{i['dislikes']}\x0F"
+               " |")
     return out
 
 
@@ -165,16 +156,9 @@ def get_url(msg):
 
 
 def resolve(url):
-    ls = ['hooktube.com/', 'youtu.be/', 'youtube.com/']
+    ls = ['youtu.be/', 'youtube.com/']
     if any(u in url for u in ls):
-        if 'hooktube.com/watch?v=' in url:
-            url = url.replace('hooktube.com', 'youtube.com')
-            return output(url, rslv=True, ht_url=True)
-        elif 'hooktube.com' in url:
-            url = url.replace('hooktube.com/', 'youtube.com/watch?v=')
-            return output(url, rslv=True, ht_url=True)
-        else:
-            return output(url, rslv=True)
+        return output(url, rslv=True)
 
 
 def main(i, irc):
