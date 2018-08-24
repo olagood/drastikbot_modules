@@ -147,13 +147,13 @@ def main(i, irc):
         if '\x01ACTION' in msglist[-a][:7]:
             msg_len = irc.var.msg_len - 9 - len(i.channel) - 10 - 2
             sed_out = call_sed(msglist[-a][7:], sed_args)
-            sed_out = sed_out.rstrip('\n').lstrip('\x01').lstrip('\ca')
+            sed_out = sed_out.rstrip('\n').replace('\x01', "").replace('\ca', "")
             sed_out = p_truncate(sed_out, msg_len, 98, True)
             irc.privmsg(i.channel, f'\x01ACTION {sed_out}')
         else:
             msg_len = irc.var.msg_len - 9 - len(i.channel) - 2
             sed_out = call_sed(msglist[-a], sed_args).strip()
-            sed_out = sed_out.rstrip('\n').lstrip('\x01').lstrip('\ca')
+            sed_out = sed_out.rstrip('\n').replace('\x01', "").replace('\ca', "")
             sed_out = p_truncate(sed_out, msg_len, 98, True)
             irc.privmsg(i.channel, sed_out)
 
