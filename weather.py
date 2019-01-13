@@ -267,7 +267,7 @@ art = (
 
 
 def wttr(irc, channel, location):
-    if location == 'moon' or 'moon@' in location:
+    if location.lower() == 'moon' or 'moon@' in location.lower():
         irc.privmsg(channel, 'This is not supported yet '
                     '(add ,+US or ,+France for these cities)')
         return
