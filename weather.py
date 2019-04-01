@@ -105,29 +105,39 @@ def temp_format_range(temp_list, unit, unit_s):
 
 
 def temp_format(txt):
-    temperature_list = txt.split()  # ['25-27', '°C']
+    temperature_list = txt.split()  # ['25..27', '°C']
     temperature = temperature_list[0]
-    dashes = temperature.count('-')
+    # dashes = temperature.count('-')
     unit = temperature_list[1]
     unit_s = unit_swap(unit)
     ret = "Temp:"
 
-    if 1 == dashes:
-        if not temperature[0] == '-':  # 25-27 °C
-            temp_list = temperature.split('-')  # ['25', '27']
-            ret = temp_format_range(temp_list, unit, unit_s)
-        else:  # -5 °C
-            ret += f"{temperature_color(temperature, unit, unit)} {unit} /"
-            ret += f"{temperature_color(temperature, unit, unit_s)} {unit_s}"
-    elif 2 == dashes:  # -2-0 °C
-        temp_list = temperature.split('-', 2)  # ['', '2', '0']
-        temp_list = [f'-{temp_list[1]}', temp_list[2]]
+    # Old parsing for "dashes" format: [ - ]<temp>< - >[ - ]<temp>
+
+    # if 1 == dashes:
+    #     if not temperature[0] == '-':  # 25-27 °C
+    #         temp_list = temperature.split('-')  # ['25', '27']
+    #         ret = temp_format_range(temp_list, unit, unit_s)
+    #     else:  # -5 °C
+    #         ret += f"{temperature_color(temperature, unit, unit)} {unit} /"
+    #         ret += f"{temperature_color(temperature, unit, unit_s)} {unit_s}"
+    # elif 2 == dashes:  # -2-0 °C
+    #     temp_list = temperature.split('-', 2)  # ['', '2', '0']
+    #     temp_list = [f'-{temp_list[1]}', temp_list[2]]
+    #     ret = temp_format_range(temp_list, unit, unit_s)
+    # elif 3 == dashes:  # -5--2
+    #     temp_list = temperature.split('-', 2)  # ['', '-5', '-2']
+    #     temp_list = [f'-{temp_list[1]}', temp_list[2]]
+    #     ret = temp_format_range(temp_list, unit, unit_s)
+    # else:  # 5 °C
+    #     ret += f"{temperature_color(temperature, unit, unit)} {unit} /"
+    #     ret += f"{temperature_color(temperature, unit, unit_s)} {unit_s}"
+
+    # New parsing for "dotted" format: [ - ]<temp>< .. >[ - ]<temp>
+    if '..' in temperature:
+        temp_list = temperature.split('..')
         ret = temp_format_range(temp_list, unit, unit_s)
-    elif 3 == dashes:  # -5--2
-        temp_list = temperature.split('-', 2)  # ['', '-5', '-2']
-        temp_list = [f'-{temp_list[1]}', temp_list[2]]
-        ret = temp_format_range(temp_list, unit, unit_s)
-    else:  # 5 °C
+    else:
         ret += f"{temperature_color(temperature, unit, unit)} {unit} /"
         ret += f"{temperature_color(temperature, unit, unit_s)} {unit_s}"
 
