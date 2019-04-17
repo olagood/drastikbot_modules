@@ -120,7 +120,8 @@ def yt_search(query):
 
 def output(yt_url, rslv=False, ht_url=False):
     '''Format the output message to be returned.'''
-    logo_yt = "\x0301,00You\x0300,04Tube\x0F"
+    # logo_yt = "\x0301,00You\x0300,04Tube\x0F"
+    logo_yt = "\x0300,04 ► \x0F"
     i = yt_vid_info(yt_url)
     yt_id = i['yt_id']
     yt = f"https://youtu.be/{yt_id} |"
