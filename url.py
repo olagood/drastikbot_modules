@@ -95,7 +95,7 @@ def get_url(msg):
     req_l = ["http://", "https://"]  # add "." for parse urls without a scheme
     urls = [u for u in str_l if any(r in u for r in req_l)]
     # Avoid parsing IPv4s that are not complete (IPs like: 1.1):
-    urls = [u for u in urls if u.count('.') == 3 or u.upper().isupper()]
+    #urls = [u for u in urls if u.count('.') == 3 or u.upper().isupper()] #To implement suggestion in issue #7
     return urls
 
 
