@@ -40,6 +40,7 @@ class Module:
 parser = 'html.parser'
 user_agent = "w3m/0.52"
 accept_lang = "en-US"
+nsfw_tag = "\x0304[NSFW]\x0F"
 data_limit = 70000
 blacklist = ['hooktube.com/', 'youtu.be/', 'youtube.com/watch']
 # --------------------- #
@@ -97,8 +98,8 @@ def get_title(u):
     tag. If there is not try to read the http headers
     to find 'content-type' and 'content-length'.
     '''
-    data = ''
-    title = False
+    data = ""
+    output = ""
     try:
         r = requests.get(u, stream=True,
                          headers={"user-agent": user_agent,
@@ -108,37 +109,33 @@ def get_title(u):
         return False
     for i in r.iter_content(chunk_size=512, decode_unicode=False):
         data += i.decode('utf-8', errors='ignore')
-        if '</title>' in data.lower():
-            html = bs4.BeautifulSoup(data, parser)
-            try:
-                title = html.head.title.text.strip()
-            except Exception:
-                pass
+        if len(data) > data_limit or '</head>' in data.lower():
             break
-        elif len(data) > data_limit or '</head>' in data.lower():
-            break
-    if not title:
+    r.close()
+    soup = bs4.BeautifulSoup(data, parser)
+    try:
+        output += soup.head.title.text.strip()
+    except Exception:
         try:
-            h_type = r.headers['content-type']
+            output += r.headers['content-type']
         except KeyError:
-            h_type = False
+            pass
         try:
             h_length = convert_size(float(r.headers['content-length']))
+            if output:
+                output += f", Size: {h_length}"
+            else:
+                output += h_length
         except KeyError:
-            h_length = False
-        if h_type and h_length:
-            headers = f"{h_type}, Size: {h_length}"
-        elif h_type and not h_length:
-            headers = f"{h_type}"
-        elif not h_type and h_length:
-            headers = f"Size: {h_length}"
-        else:
-            return False
-        r.close()
-        return headers
-    else:
-        r.close()
-        return title
+            pass
+    try:
+        if "RTA-5042-1996-1400-1577-RTA" in data:
+            output = f"{nsfw_tag} {output}"
+        elif r.headers["Rating"] == "RTA-5042-1996-1400-1577-RTA":
+            output = f"{nsfw_tag} {output}"
+    except KeyError:
+        pass
+    return output
 
 
 def main(i, irc):
