@@ -67,20 +67,6 @@ def remove_formatting(msg):
     return line
 
 
-def short_url(url):
-    if not len(url) > 80:
-        return False
-    p = {}
-    p['url'] = url
-    p['json'] = 1
-    service = 'https://u.drastik.org/make'
-    try:
-        r = requests.get(service, params=p, timeout=5)
-        return r.json()["short-url"]
-    except Exception:
-        return False
-
-
 def convert_size(size_bytes):
     # https://stackoverflow.com/
     # questions/5194057/better-way-to-convert-file-sizes-in-python
@@ -177,10 +163,7 @@ def main(i, irc):
         if u in prev_u:
             return
         title = get_title(u)
-        short = short_url(u)
         if not title:
             continue
-        if short:
-            title = f'{title} - {short}'
         irc.privmsg(i.channel, title)
         prev_u.add(u)
