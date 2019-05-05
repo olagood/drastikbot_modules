@@ -53,13 +53,17 @@ def remove_formatting(msg):
     # Capture "x03N". Catch all color codes.
     # (\\x03[0-9]{0,2})
     # Capture the other formatting codes
-    # (\\x02)
     line = re.sub(r'(\\x03[0-9]{0,2},{1}[0-9]{1,2})', '', msg)
-    line = re.sub(r'(\\x03[0-9]{0,2})', '', line)
-    format_codes = ['x02', 'x1d', 'x1f', 'x16', 'x0f']
-    for i in format_codes:
-        if i in line.lower():
-            line = re.sub(rf'(\\{i})', '', line)
+    line = re.sub(r'(\\x03[0-9]{1,2})', '', line)
+    line = line.replace("\\x03", "")
+    line = line.replace("\\x02", "")
+    line = line.replace("\\x1d", "")
+    line = line.replace("\\x1D", "")
+    line = line.replace("\\x1f", "")
+    line = line.replace("\\x1F", "")
+    line = line.replace("\\x16", "")
+    line = line.replace("\\x0f", "")
+    line = line.replace("\\x0F", "")
     return line
 
 
@@ -95,7 +99,8 @@ def get_url(msg):
     req_l = ["http://", "https://"]  # add "." for parse urls without a scheme
     urls = [u for u in str_l if any(r in u for r in req_l)]
     # Avoid parsing IPv4s that are not complete (IPs like: 1.1):
-    #urls = [u for u in urls if u.count('.') == 3 or u.upper().isupper()] #To implement suggestion in issue #7
+    # Useful when a scheme is not required to parse a URL.
+    # urls = [u for u in urls if u.count('.') == 3 or u.upper().isupper()]
     return urls
 
 
@@ -160,7 +165,7 @@ def main(i, irc):
     msg = str(msg).split(' :', 1)[1][:-1]
     # Remove all IRC formatting codes
     msg = remove_formatting(msg)
-
+    print(msg)
     # msg = info[2]
 
     urls = get_url(msg)
