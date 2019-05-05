@@ -165,7 +165,6 @@ def main(i, irc):
     msg = str(msg).split(' :', 1)[1][:-1]
     # Remove all IRC formatting codes
     msg = remove_formatting(msg)
-    print(msg)
     # msg = info[2]
 
     urls = get_url(msg)
