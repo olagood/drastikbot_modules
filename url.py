@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
 import math
+from urllib.parse import urlparse
 import requests
 import bs4
 
@@ -38,11 +39,10 @@ class Module:
 
 # ----- Constants ----- #
 parser = 'html.parser'
-user_agent = "w3m/0.52"
+d_user_agent = "w3m/0.52"
 accept_lang = "en-US"
 nsfw_tag = "\x0304[NSFW]\x0F"
-data_limit = 70000
-blacklist = ['hooktube.com/', 'youtu.be/', 'youtube.com/watch']
+data_limit = 69120
 # --------------------- #
 
 
@@ -91,7 +91,28 @@ def get_url(msg):
     return urls
 
 
-def get_title(u):
+def youtube(url):
+    '''Visit a video and get it's information.'''
+    r = requests.get(url, headers={"Accept-Language": accept_lang}, timeout=10)
+    soup = bs4.BeautifulSoup(r.text, parser)
+    name = soup.find(attrs={"itemprop": "name"})['content']
+    channel = soup.find(attrs={"class": "yt-user-info"}).text.strip()
+    duration = soup.find(attrs={"itemprop": "duration"})['content']
+    duration = duration[2:][:-1].split('M')
+    mins = int(duration[0])
+    if mins > 59:
+        mins = '{:02d}:{:02d}'.format(*divmod(mins, 60))  # wont do days
+    if len(duration[1]) < 2:
+        secs = f'0{duration[1]}'
+    else:
+        secs = duration[1]
+    duration = f'{mins}:{secs}'
+    out = (f"\x0300,04 ► \x0F: \x02{name}\x0F ({duration})"
+           f" | \x02Channel:\x0F {channel}")
+    return out
+
+
+def default_parser(u):
     '''
     Visit each url and check if there is html content
     served. If there is try to get the <title></title>
@@ -102,7 +123,7 @@ def get_title(u):
     output = ""
     try:
         r = requests.get(u, stream=True,
-                         headers={"user-agent": user_agent,
+                         headers={"user-agent": d_user_agent,
                                   "Accept-Language": accept_lang},
                          timeout=5)
     except Exception:
@@ -138,6 +159,20 @@ def get_title(u):
     return output
 
 
+hosts_d = {
+        "youtube.com": youtube,
+        "youtu.be": youtube
+    }
+
+
+def get_title(u):
+    host = urlparse(u).hostname
+    if host not in hosts_d:
+        return default_parser(u)
+    else:
+        return hosts_d[host](u)
+
+
 def main(i, irc):
     # - Raw undecoded message clean up.
     # Remove /r/n and whitespace
@@ -155,8 +190,6 @@ def main(i, irc):
     for u in urls:
         if not (u.startswith('http://') or u.startswith('https://')):
             u = f'http://{u}'
-        if any(b in u for b in blacklist):
-            return
         if u in prev_u:
             return
         title = get_title(u)
