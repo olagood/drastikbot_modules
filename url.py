@@ -158,7 +158,7 @@ def youtube(url):
     else:
         secs = duration[1]
     duration = f'{mins}:{secs}'
-    out = (f"\x0300,04 ► \x0F: \x02{name}\x0F ({duration})"
+    out = (f"\x0300,04 ► \x0F: {name} ({duration})"
            f" | \x02Channel:\x0F {channel}")
     return out
 
