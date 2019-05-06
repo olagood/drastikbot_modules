@@ -217,6 +217,8 @@ hosts_d = {
 
 def get_title(u):
     host = urllib.parse.urlparse(u).hostname
+    if host[:4] == "www.":
+        host = host[4:]
     if host not in hosts_d:
         return default_parser(u)
     else:
