@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
 import math
-from urllib.parse import urlparse
+import urllib.parse
 import requests
 import bs4
 
@@ -39,7 +39,7 @@ class Module:
 
 # ----- Constants ----- #
 parser = 'html.parser'
-d_user_agent = "w3m/0.52"
+user_agent = "w3m/0.52"
 accept_lang = "en-US"
 nsfw_tag = "\x0304[NSFW]\x0F"
 data_limit = 69120
@@ -91,27 +91,6 @@ def get_url(msg):
     return urls
 
 
-def youtube(url):
-    '''Visit a video and get it's information.'''
-    r = requests.get(url, headers={"Accept-Language": accept_lang}, timeout=10)
-    soup = bs4.BeautifulSoup(r.text, parser)
-    name = soup.find(attrs={"itemprop": "name"})['content']
-    channel = soup.find(attrs={"class": "yt-user-info"}).text.strip()
-    duration = soup.find(attrs={"itemprop": "duration"})['content']
-    duration = duration[2:][:-1].split('M')
-    mins = int(duration[0])
-    if mins > 59:
-        mins = '{:02d}:{:02d}'.format(*divmod(mins, 60))  # wont do days
-    if len(duration[1]) < 2:
-        secs = f'0{duration[1]}'
-    else:
-        secs = duration[1]
-    duration = f'{mins}:{secs}'
-    out = (f"\x0300,04 ► \x0F: \x02{name}\x0F ({duration})"
-           f" | \x02Channel:\x0F {channel}")
-    return out
-
-
 def default_parser(u):
     '''
     Visit each url and check if there is html content
@@ -123,7 +102,7 @@ def default_parser(u):
     output = ""
     try:
         r = requests.get(u, stream=True,
-                         headers={"user-agent": d_user_agent,
+                         headers={"user-agent": user_agent,
                                   "Accept-Language": accept_lang},
                          timeout=5)
     except Exception:
@@ -159,14 +138,85 @@ def default_parser(u):
     return output
 
 
+#                                   #
+# BEGIN: Website Handling Functions #
+#                                   #
+
+def youtube(url):
+    '''Visit a video and get it's information.'''
+    r = requests.get(url, headers={"Accept-Language": accept_lang}, timeout=10)
+    soup = bs4.BeautifulSoup(r.text, parser)
+    name = soup.find(attrs={"itemprop": "name"})['content']
+    channel = soup.find(attrs={"class": "yt-user-info"}).text.strip()
+    duration = soup.find(attrs={"itemprop": "duration"})['content']
+    duration = duration[2:][:-1].split('M')
+    mins = int(duration[0])
+    if mins > 59:
+        mins = '{:02d}:{:02d}'.format(*divmod(mins, 60))  # wont do days
+    if len(duration[1]) < 2:
+        secs = f'0{duration[1]}'
+    else:
+        secs = duration[1]
+    duration = f'{mins}:{secs}'
+    out = (f"\x0300,04 ► \x0F: \x02{name}\x0F ({duration})"
+           f" | \x02Channel:\x0F {channel}")
+    return out
+
+
+def lainchan(url):
+    logo = "\x0309lainchan\x0F"
+    if "/res/" in url:
+        board = url.split("lainchan.org/")[1].split("/", 1)[0]
+        board = urllib.parse.unquote(board)
+        u = url.replace(".html", ".json")
+
+        post_no = False
+        if ".html#" in url:
+            post_no = url.split("#")[1][1:]
+
+        r = requests.get(u, timeout=10).json()
+
+        try:
+            title = r["posts"][0]["sub"]
+        except KeyError:
+            title = f'{r["posts"][0]["com"][:80]}...'
+
+        replies = len(r["posts"]) - 1
+        files = 0
+        for i in r["posts"]:
+            if "filename" in i:
+                files += 1
+            if "extra_files" in i:
+                files += len(i["extra_files"])
+
+        if post_no:
+            for i in r["posts"]:
+                if int(post_no) != i["no"]:
+                    continue
+                post_text = bs4.BeautifulSoup(i["com"], parser).get_text()[:50]
+                return (f"{logo} \x0306/{board}/\x0F {title} "
+                        f"\x02->\x0F \x0302{post_text}...\x0F | "
+                        f"\x02Replies:\x0F {replies} - \x02Files:\x0F {files}")
+
+        return (f"{logo} \x0306/{board}/\x0F {title} | "
+                f"\x02Replies:\x0F {replies} - \x02Files:\x0F {files}")
+    else:
+        out = default_parser(url)
+        return f"{logo}: {out}"
+#                                 #
+# END: Website Handling Functions #
+#                                 #
+
+
 hosts_d = {
-        "youtube.com": youtube,
-        "youtu.be": youtube
+    "youtube.com": youtube,
+    "youtu.be": youtube,
+    "lainchan.org": lainchan
     }
 
 
 def get_title(u):
-    host = urlparse(u).hostname
+    host = urllib.parse.urlparse(u).hostname
     if host not in hosts_d:
         return default_parser(u)
     else:
