@@ -50,12 +50,13 @@ lang = "en-US"
 # --------------------- #
 
 
-def yt_vid_info(url):
+def yt_vid_info(yt_id):
     '''Visit a video and get it's information.'''
+    url = f'https://www.youtube.com/watch?v={yt_id}'
+    short_url = f"https://youtu.be/{yt_id}"
     r = requests.get(url, headers={"Accept-Language": lang}, timeout=10)
     soup = bs4.BeautifulSoup(r.text, parser)
     date = soup.find(attrs={"itemprop": "datePublished"})['content']
-    yt_id = soup.find(attrs={"itemprop": "videoId"})['content']
     name = soup.find(attrs={"itemprop": "name"})['content']
     views = "{:,}".format(int(soup.find(
         attrs={"itemprop": "interactionCount"})['content']))
@@ -73,10 +74,11 @@ def yt_vid_info(url):
     else:
         secs = duration[1]
     duration = f'{mins}:{secs}'
-    result = {'name': name, 'date': date, 'views': views,
-              'genre': genre, 'channel': channel, 'likes': likes,
-              'dislikes': dislikes, 'duration': duration, 'yt_id': yt_id}
-    return result
+    return {
+        'short_url': short_url, 'name': name, 'date': date, 'views': views,
+        'genre': genre, 'channel': channel, 'likes': likes,
+        'dislikes': dislikes, 'duration': duration, 'yt_id': yt_id
+    }
 
 
 def yt_search(query):
@@ -84,8 +86,8 @@ def yt_search(query):
     Search YouTube for 'query' and get a video from the search results.
     It tries to visit the video found to ensure that it is valid.
     Returns:
-        - 'u'   : YouTube url to the result video.
-        - False : If no video is found for 'query'.
+        - 'yt_id' : The YouTube ID of the result video.
+        - False   : If no video is found for 'query'.
     '''
     search = f'https://www.youtube.com/results?search_query={query}'
     r = requests.get(search, headers={"Accept-Language": lang}, timeout=10)
@@ -110,7 +112,7 @@ def yt_search(query):
             pass
     else:
         return False
-    return u
+    return yt_id
 
 
 def output(yt_url):
@@ -118,19 +120,14 @@ def output(yt_url):
     # logo_yt = "\x0301,00You\x0300,04Tube\x0F"
     logo_yt = "\x0300,04 ► \x0F"
     i = yt_vid_info(yt_url)
-    yt_id = i['yt_id']
-    yt = f"https://youtu.be/{yt_id} |"
-    t = f" \x02{i['name']}\x0F"
-    out = (f"{logo_yt}: {yt}"
-           f"{t} ({i['duration']})"
-           f" | \x02Views:\x0F {i['views']}"
-           f" | \x02Channel\x0F: {i['channel']}"
-           f" | \x02Date:\x0F {i['date']}"
-           f" | \x02Genre:\x0F {i['genre']}"
-           f" | \x0303+{i['likes']}\x0F"
-           f" | \x0304-{i['dislikes']}\x0F"
-           " |")
-    return out
+    return (f"{logo_yt}: {i['short_url']} | "
+            f"\x02{i['name']}\x0F ({i['duration']})"
+            f" | \x02Views:\x0F {i['views']}"
+            f" | \x02Channel\x0F: {i['channel']}"
+            f" | \x02Date:\x0F {i['date']}"
+            f" | \x02Genre:\x0F {i['genre']}"
+            f" | \x0303+{i['likes']}\x0F"
+            f" | \x0304-{i['dislikes']}\x0F |")
 
 
 def main(i, irc):
