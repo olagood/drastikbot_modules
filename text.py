@@ -25,12 +25,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 class Module:
     def __init__(self):
-        self.commands = ['ae', 'circled_text', 'negative_circled_text',
-                         'squared_text', 'negative_squared_text',
-                         'regional_indicator_symbol_text']
+        self.commands = [
+            'ae', 'fullwidth_text',
+            'c_text', 'circled_text',
+            'nc_text', 'negative_circled_text',
+            's_text', 'squared_text',
+            'ns_text', 'negative_squared_text',
+            'flag', 'regional_indicator_symbol_text'
+        ]
         self.helpmsg = [
-            "Usage: .ae <Text>",
-            "       .circled_text <Text>",
+            "Usage: .ae <Text> | .fullwidth",
+            "       .circled_text <Text> | .c_text",
+            "       .negative_circled_text <Text> | .nc_text",
+            "       .squared_text <Text> | .s_text",
+            "       .negative_squared_text <Text> | .ns_text",
+            "       .flag <Text> | .regional_indicator_symbol_text"
             " ",
             "Transform textual input to various other styles.",
             " ",
@@ -83,24 +92,28 @@ REGIONAL_INDICATOR_SYMBOL_MAP = {
 }
 
 
+command_map_d = {
+    'ae': FULLWIDTH_MAP,
+    'fullwidth_text': FULLWIDTH_MAP,
+    'c_text': CIRCLED_MAP,
+    'circled_text': CIRCLED_MAP,
+    'nc_text': NEGATIVE_CIRCLED_MAP,
+    'negative_circled_text': SQUARED_MAP,
+    's_text': SQUARED_MAP,
+    'squared_text': SQUARED_MAP,
+    'ns_text': NEGATIVE_SQUARED_MAP,
+    'negative_squared_text': NEGATIVE_SQUARED_MAP,
+    'flag': REGIONAL_INDICATOR_SYMBOL_MAP,
+    'regional_indicator_symbol_text': REGIONAL_INDICATOR_SYMBOL_MAP
+}
+
+
 def main(i, irc):
     if not i.msg_nocmd:
         return
     s = i.msg_nocmd
-
-    if i.cmd == "ae":
-        t = s.translate(FULLWIDTH_MAP)
-        if t == s:
-            t = s.replace("", " ")[1: -1]
-    elif i.cmd == "circled_text":
-        t = s.translate(CIRCLED_MAP)
-    elif i.cmd == "negative_circled_text":
-        t = s.translate(NEGATIVE_CIRCLED_MAP)
-    elif i.cmd == "squared_text":
-        t = s.translate(SQUARED_MAP)
-    elif i.cmd == "negative_squared_text":
-        t = s.translate(NEGATIVE_SQUARED_MAP)
-    elif i.cmd == "regional_indicator_symbol_text":
-        t = s.translate(REGIONAL_INDICATOR_SYMBOL_MAP)
+    t = s.translate(command_map_d[i.cmd])
+    if i.cmd == "ae" and t == s:
+        t = s.replace("", " ")[1: -1]
 
     irc.privmsg(i.channel, t)
