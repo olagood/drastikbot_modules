@@ -3,10 +3,10 @@
 
 # Text Module for Drastikbot
 #
-# Translate text to other unicode maps like widemap.
+# Transform textual input to various other styles.
 
 '''
-Copyright (C) 2018 drastik.org
+Copyright (C) 2019 drastik.org
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,24 +25,38 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 class Module:
     def __init__(self):
-        self.commands = ['ae']
+        self.commands = ['ae', 'circled_text']
         self.helpmsg = [
             "Usage: .ae <Text>",
+            "       .circled_text <Text>",
             " ",
-            "Translate text to other unicode maps like widemap.",
+            "Transform textual input to various other styles.",
+            " ",
             "Example: <Alice> : .ae Hello, World!",
             "         Bot     : Ｈｅｌｌｏ，　Ｗｏｒｌｄ！"]
 
 
-WIDE_MAP = dict((i, i + 0xFEE0) for i in range(0x21, 0x7F))
-WIDE_MAP[0x20] = 0x3000
+# https://en.wikipedia.org/wiki/Halfwidth_and_fullwidth_forms_(Unicode_block)
+FULLWIDTH_MAP = dict((i, i + 0xFEE0) for i in range(0x21, 0x7F))
+FULLWIDTH_MAP[0x20] = 0x3000
+
+# https://en.wikipedia.org/wiki/Enclosed_Alphanumerics
+_CIRCLED_NUM_MAP = dict((i, (i - 0x31) + 0x2460) for i in range(0x30, 0x3A))
+_CIRCLED_NUM_MAP[0x30] = 0x24EA  # Set the actual Circled digit zero character
+_CIRCLED_ALP_U_MAP = dict((i, (i - 0x41) + 0x24B6) for i in range(0x41, 0x5B))
+_CIRCLED_ALP_L_MAP = dict((i, (i - 0x61) + 0x24B6) for i in range(0x61, 0x7B))
+CIRCLED_MAP = {**_CIRCLED_NUM_MAP, **_CIRCLED_ALP_U_MAP, **_CIRCLED_ALP_L_MAP}
 
 
 def main(i, irc):
     if not i.msg_nocmd:
         return
     s = i.msg_nocmd
-    t = s.translate(WIDE_MAP)
-    if t == s:
-        t = s.replace("", " ")[1: -1]
+
+    if i.cmd == "ae":
+        t = s.translate(FULLWIDTH_MAP)
+        if t == s:
+            t = s.replace("", " ")[1: -1]
+    elif i.cmd == "circled_text":
+        t = s.translate(CIRCLED_MAP)
     irc.privmsg(i.channel, t)
