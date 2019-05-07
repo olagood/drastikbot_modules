@@ -26,7 +26,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 class Module:
     def __init__(self):
         self.commands = ['ae', 'circled_text', 'negative_circled_text',
-                         'squared_text', 'negative_squared_text']
+                         'squared_text', 'negative_squared_text',
+                         'regional_indicator_symbol_text']
         self.helpmsg = [
             "Usage: .ae <Text>",
             "       .circled_text <Text>",
@@ -71,6 +72,16 @@ NEGATIVE_SQUARED_MAP = {
     **_NEGATIVE_SQUARED_ALP_L_MAP
 }
 
+# https://en.wikipedia.org/wiki/Regional_Indicator_Symbol
+_REGIONAL_INDICATOR_SYMBOL_U_MAP = dict(
+    (i, (i - 0x41) + 0x1F1E6) for i in range(0x41, 0x5B))
+_REGIONAL_INDICATOR_SYMBOL_L_MAP = dict(
+    (i, (i - 0x61) + 0x1F1E6) for i in range(0x61, 0x7B))
+REGIONAL_INDICATOR_SYMBOL_MAP = {
+    **_REGIONAL_INDICATOR_SYMBOL_U_MAP,
+    **_REGIONAL_INDICATOR_SYMBOL_L_MAP
+}
+
 
 def main(i, irc):
     if not i.msg_nocmd:
@@ -89,5 +100,7 @@ def main(i, irc):
         t = s.translate(SQUARED_MAP)
     elif i.cmd == "negative_squared_text":
         t = s.translate(NEGATIVE_SQUARED_MAP)
+    elif i.cmd == "regional_indicator_symbol_text":
+        t = s.translate(REGIONAL_INDICATOR_SYMBOL_MAP)
 
     irc.privmsg(i.channel, t)
