@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 class Module:
     def __init__(self):
-        self.commands = ['ae', 'circled_text']
+        self.commands = ['ae', 'circled_text', 'negative_circled_text']
         self.helpmsg = [
             "Usage: .ae <Text>",
             "       .circled_text <Text>",
@@ -47,6 +47,16 @@ _CIRCLED_ALP_U_MAP = dict((i, (i - 0x41) + 0x24B6) for i in range(0x41, 0x5B))
 _CIRCLED_ALP_L_MAP = dict((i, (i - 0x61) + 0x24B6) for i in range(0x61, 0x7B))
 CIRCLED_MAP = {**_CIRCLED_NUM_MAP, **_CIRCLED_ALP_U_MAP, **_CIRCLED_ALP_L_MAP}
 
+# https://en.wikipedia.org/wiki/Enclosed_Alphanumeric_Supplement
+_NEGATIVE_CIRCLED_ALP_U_MAP = dict(
+    (i, (i - 0x41) + 0x1F150) for i in range(0x41, 0x5B))
+_NEGATIVE_CIRCLED_ALP_L_MAP = dict(
+    (i, (i - 0x61) + 0x1F150) for i in range(0x61, 0x7B))
+NEGATIVE_CIRCLED_MAP = {
+    **_NEGATIVE_CIRCLED_ALP_U_MAP,
+    **_NEGATIVE_CIRCLED_ALP_L_MAP
+}
+
 
 def main(i, irc):
     if not i.msg_nocmd:
@@ -59,4 +69,7 @@ def main(i, irc):
             t = s.replace("", " ")[1: -1]
     elif i.cmd == "circled_text":
         t = s.translate(CIRCLED_MAP)
+    elif i.cmd == "negative_circled_text":
+        t = s.translate(NEGATIVE_CIRCLED_MAP)
+
     irc.privmsg(i.channel, t)
