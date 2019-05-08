@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
 import math
+import json
 import urllib.parse
 import requests
 import bs4
@@ -141,7 +142,6 @@ def default_parser(u):
 #                                   #
 # BEGIN: Website Handling Functions #
 #                                   #
-
 def youtube(url):
     '''Visit a video and get it's information.'''
     r = requests.get(url, headers={"Accept-Language": accept_lang}, timeout=10)
@@ -169,18 +169,14 @@ def lainchan(url):
         board = url.split("lainchan.org/")[1].split("/", 1)[0]
         board = urllib.parse.unquote(board)
         u = url.replace(".html", ".json")
-
         post_no = False
         if ".html#" in url:
             post_no = url.split("#")[1][1:]
-
         r = requests.get(u, timeout=10).json()
-
         try:
             title = r["posts"][0]["sub"]
         except KeyError:
             title = f'{r["posts"][0]["com"][:80]}...'
-
         replies = len(r["posts"]) - 1
         files = 0
         for i in r["posts"]:
@@ -188,7 +184,6 @@ def lainchan(url):
                 files += 1
             if "extra_files" in i:
                 files += len(i["extra_files"])
-
         if post_no:
             for i in r["posts"]:
                 if int(post_no) != i["no"]:
@@ -203,6 +198,48 @@ def lainchan(url):
     else:
         out = default_parser(url)
         return f"{logo}: {out}"
+
+
+def imgur(url):
+    try:
+        up = urllib.parse.urlparse(url)
+        host = up.hostname
+        path = up.path
+        if host[:2] == "i.":
+            host = host[2:]
+            path = path.rsplit(".", 1)[0]
+            u = f"https://{host}{path}"
+        else:
+            u = url
+
+        r = requests.get(u, timeout=10)
+        s = "widgetFactory.mergeConfig('gallery', "
+        b = r.text.index(s) + len(s)
+        e = r.text.index(");", b)
+        t = r.text[b:e]
+
+        s = "image               :"
+        b = t.index(s) + len(s)
+        e = t.index("},", b)
+        t = t[b:e] + "}"
+
+        j = json.loads(t)
+        title = j["title"]
+        mimetype = j["mimetype"]
+        size = j["size"]
+        width = j["width"]
+        height = j["height"]
+        nsfw = j["nsfw"]
+
+        output = ""
+        if nsfw:
+            output += f"{nsfw_tag} "
+        output += f"{title} - Imgur"
+        output += f" | {mimetype}, Size: {convert_size(size)}"
+        output += f", {width}x{height}"
+        return output
+    except Exception:
+        return default_parser(url)
 #                                 #
 # END: Website Handling Functions #
 #                                 #
@@ -211,8 +248,10 @@ def lainchan(url):
 hosts_d = {
     "youtube.com": youtube,
     "youtu.be": youtube,
-    "lainchan.org": lainchan
-    }
+    "lainchan.org": lainchan,
+    "i.imgur.com": imgur,
+    "imgur.com": imgur
+}
 
 
 def get_title(u):
