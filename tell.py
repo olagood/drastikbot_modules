@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
 import datetime
+from ignore import is_ignored
 
 
 class Module:
@@ -76,16 +77,18 @@ def main(i, irc):
             msg = arg_list[1]
         except IndexError:
             help_msg = f"Usage: {i.cmd_prefix}{i.cmd} <Reciever> <Message>"
-            irc.privmsg(i.channel, help_msg)
-            return
+            return irc.privmsg(i.channel, help_msg)
         if i.nickname.lower() == reciever.lower():
             return irc.privmsg(i.channel, 'You can tell yourself that.')
         if irc.var.curr_nickname.lower() == reciever.lower():
-            irc.privmsg(i.channel, f'{i.nickname}: I am here now, tell me.')
-        else:
-            add(reciever, msg, i.nickname, dbc)
-            irc.privmsg(i.channel,
-                        f'{i.nickname}: I will tell {reciever} '
-                        'when they are around.')
+            return irc.privmsg(i.channel,
+                               f'{i.nickname}: I am here now, tell me.')
+        if is_ignored(i, irc, reciever, i.nickname):
+            return  # say nothing
+        add(reciever, msg, i.nickname, dbc)
+        irc.privmsg(i.channel,
+                    f'{i.nickname}: I will tell {reciever} '
+                    'when they are around.')
+
     find(i.nickname, irc, dbc)
     i.db[1].commit()
