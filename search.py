@@ -50,7 +50,6 @@ class Module:
 
 
 # ----- Constants ----- #
-opt_short_url = True
 opt_title_tag = True
 parser = 'html.parser'
 lang = "en-US"
@@ -79,20 +78,6 @@ def urlfix(url):
     return url
 
 
-def short_url(url):
-    if len(url) < 80:
-        return url
-    p = {}
-    p['url'] = url
-    p['json'] = 1
-    service = 'https://u.drastik.org/make'
-    try:
-        r = requests.get(service, params=p, timeout=10)
-        return r.json()["short-url"]
-    except Exception:
-        return url
-
-
 # --- Search engine functions --- #
 def google(query):
     logo = '\x0302G\x0304o\x0308o\x0302g\x0309l\x0304e\x0F'
@@ -111,11 +96,9 @@ def google(query):
         u = urlfix(u)
         if opt_title_tag:
             title = url.get_title(u)
-        else:
-            title = ''
-        if title:
             break
         else:
+            title = ''
             try:
                 requests.get(u, timeout=10)
                 break
@@ -123,10 +106,8 @@ def google(query):
                 pass
     else:
         return err_str
-    if opt_short_url:
-        u = short_url(u)
-    result = f"{logo}: {u} | {title}"
-    return result
+
+    return f"{logo}: {u} | {title}"
 
 
 def bing(query):
@@ -140,11 +121,9 @@ def bing(query):
         u = urlfix(s.find('a').get('href'))
         if opt_title_tag:
             title = url.get_title(u)
-        else:
-            title = ''
-        if title:
             break
         else:
+            title = ''
             try:
                 requests.get(u, timeout=10)
                 break
@@ -152,8 +131,6 @@ def bing(query):
                 pass
     else:
         return err_str
-    if opt_short_url:
-        u = short_url(u)
     return f"{logo}: {u} | {title}"
 
 
@@ -164,10 +141,13 @@ def ddg(query, query_p):
                   '&format=json&no_redirect=1')
         r = requests.get(search, headers={"Accept-Language": lang}, timeout=10)
         data = json.loads(r.text)
-        return short_url(urlfix(data["Redirect"]))
+        u = urlfix(data["Redirect"])
+        return f"{logo}: {u}"
     # If no bang is given, search and find a result
     search = f'https://duckduckgo.com/html/?q={query}'
-    r = requests.get(search, timeout=10)
+    r = requests.get(search, headers={"user-agent": "w3m/0.52",
+                                      "Accept-Language": lang},
+                     timeout=10)
     soup = bs4.BeautifulSoup(r.text, parser)
     err_str = (f'{logo}: \x0308Sorry, i could not find any results for:\x0F'
                f' {url2str(query)}')
@@ -179,11 +159,9 @@ def ddg(query, query_p):
             return err_str
         if opt_title_tag:
             title = url.get_title(u)
-        else:
-            title = ''
-        if title:
             break
         else:
+            title = ''
             try:
                 requests.get(u, timeout=10)
                 break
@@ -191,8 +169,7 @@ def ddg(query, query_p):
                 pass
     else:
         return err_str
-    if opt_short_url:
-        u = short_url(u)
+
     return f"{logo}: {u} | {title}"
 
 
@@ -224,8 +201,7 @@ def searx(query):
             break
     else:
         return err_str
-    if opt_short_url:
-        u = short_url(u)
+
     return f"{logo}: {u} {title}"
 
 
@@ -240,11 +216,9 @@ def startpage(query):
         u = urlfix(s.get('href'))
         if opt_title_tag:
             title = f"| {url.get_title(u)}"
-        else:
-            title = ''
-        if title:
             break
         else:
+            title = ''
             try:
                 requests.get(u, timeout=10)
                 break
@@ -252,8 +226,7 @@ def startpage(query):
                 pass
     else:
         return err_str
-    if opt_short_url:
-        u = short_url(u)
+
     return f"{logo}: {u} {title}"
 
 
