@@ -290,7 +290,10 @@ def title_after_handler(title, data):
     Used to get data from the <head> when the <title> isn't very helpful
     '''
     if title in titles_d:
-        return titles_d[title](data)
+        try:
+            return titles_d[title](data)
+        except Exception:
+            return title
     else:
         return title
 
