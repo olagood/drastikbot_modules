@@ -136,12 +136,12 @@ def default_parser(u):
             output = f"{nsfw_tag} {output}"
     except KeyError:
         pass
-    return output
+    return output, data
 
 
-#                                   #
-# BEGIN: Website Handling Functions #
-#                                   #
+#                                            #
+# BEGIN: Website Handling Functions (by url) #
+#                                            #
 def youtube(url):
     '''Visit a video and get it's information.'''
     r = requests.get(url, headers={"Accept-Language": accept_lang}, timeout=10)
@@ -196,7 +196,7 @@ def lainchan(url):
         return (f"{logo} \x0306/{board}/\x0F {title} | "
                 f"\x02Replies:\x0F {replies} - \x02Files:\x0F {files}")
     else:
-        out = default_parser(url)
+        out = default_parser(url)[0]
         return f"{logo}: {out}"
 
 
@@ -239,10 +239,10 @@ def imgur(url):
         output += f", {width}x{height}"
         return output
     except Exception:
-        return default_parser(url)
-#                                 #
-# END: Website Handling Functions #
-#                                 #
+        return default_parser(url)[0]
+#                                          #
+# END: Website Handling Functions (by url) #
+#                                          #
 
 
 hosts_d = {
@@ -259,9 +259,40 @@ def get_title(u):
     if host[:4] == "www.":
         host = host[4:]
     if host not in hosts_d:
-        return default_parser(u)
+        return default_parser(u)  # It's a tuple
     else:
-        return hosts_d[host](u)
+        return hosts_d[host](u), False
+
+
+#                                              #
+# BEGIN: Website Handling Functions (by title) #
+#                                              #
+def pleroma(data):
+    logo = "\x0308Pleroma\x0F"
+    soup = bs4.BeautifulSoup(data, parser)
+    t = soup.find(attrs={"property": "og:description"})['content']
+    t = t.split(": ", 1)
+    poster = t[0]
+    post = t[1]
+    return f"{logo}: \x0302{poster}\x0F {post}"
+#                                            #
+# END: Website Handling Functions (by title) #
+#                                            #
+
+
+titles_d = {
+    "Pleroma": pleroma
+}
+
+
+def title_after_handler(title, data):
+    '''
+    Used to get data from the <head> when the <title> isn't very helpful
+    '''
+    if title in titles_d:
+        return titles_d[title](data)
+    else:
+        return title
 
 
 def main(i, irc):
@@ -283,8 +314,10 @@ def main(i, irc):
             u = f'http://{u}'
         if u in prev_u:
             return
-        title = get_title(u)
+        title, data = get_title(u)
         if not title:
             continue
+        if data:
+            title = title_after_handler(title, data)
         irc.privmsg(i.channel, title)
         prev_u.add(u)
