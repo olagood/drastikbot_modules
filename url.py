@@ -274,7 +274,7 @@ def pleroma(data):
     t = t.split(": ", 1)
     poster = t[0]
     post = t[1]
-    return f"{logo}: \x0302{poster}\x0F {post}"
+    return f"{logo}: \x0305{poster}\x0F {post}"
 #                                            #
 # END: Website Handling Functions (by title) #
 #                                            #
