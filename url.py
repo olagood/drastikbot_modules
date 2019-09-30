@@ -254,7 +254,7 @@ hosts_d = {
 }
 
 
-def get_title(u):
+def _get_title_from_host(u):
     host = urllib.parse.urlparse(u).hostname
     if host[:4] == "www.":
         host = host[4:]
@@ -285,7 +285,7 @@ titles_d = {
 }
 
 
-def title_after_handler(title, data):
+def _get_title_from_title(title, data):
     '''
     Used to get data from the <head> when the <title> isn't very helpful
     '''
@@ -296,6 +296,13 @@ def title_after_handler(title, data):
             return title
     else:
         return title
+
+
+def get_title(u):
+    title, data = _get_title_from_host(u)
+    if data:
+        title = _get_title_from_title(title, data)
+    return title
 
 
 def main(i, irc):
@@ -317,10 +324,9 @@ def main(i, irc):
             u = f'http://{u}'
         if u in prev_u:
             return
-        title, data = get_title(u)
+        title = get_title(u)
         if not title:
             continue
-        if data:
-            title = title_after_handler(title, data)
+
         irc.privmsg(i.channel, title)
         prev_u.add(u)
