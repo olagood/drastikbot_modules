@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # coding=utf-8
 
 # URL Module for Drastikbot
@@ -8,20 +7,19 @@
 #   - beautifulsoup :: $ pip3 install beautifulsoup4
 
 '''
-Copyright (C) 2019 drastik.org
+Copyright (C) 2017-2019 drastik.org
 
 This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, version 3 only.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GNU Affero General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
 import re
@@ -240,6 +238,19 @@ def imgur(url):
         return output
     except Exception:
         return default_parser(url)[0]
+
+
+def nitter(url):
+    logo = "\x0304Nitter\x0f"
+    output, data = default_parser(url)
+    try:
+        soup = bs4.BeautifulSoup(data, parser)
+        t = soup.find(attrs={"property": "og:description"})['content']
+        if t:
+            return f"{logo}: {t}"
+        return output
+    except Exception:
+        return output
 #                                          #
 # END: Website Handling Functions (by url) #
 #                                          #
@@ -250,7 +261,8 @@ hosts_d = {
     "youtu.be": youtube,
     "lainchan.org": lainchan,
     "i.imgur.com": imgur,
-    "imgur.com": imgur
+    "imgur.com": imgur,
+    "nitter.net": nitter
 }
 
 
