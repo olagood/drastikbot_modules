@@ -241,13 +241,14 @@ def imgur(url):
 
 
 def nitter(url):
-    logo = "\x0304Nitter\x0f"
+    logo = "\x02Nitter\x0f"
     output, data = default_parser(url)
     try:
         soup = bs4.BeautifulSoup(data, parser)
-        t = soup.find(attrs={"property": "og:description"})['content']
-        if t:
-            return f"{logo}: {t}"
+        user = soup.find(attrs={"property": "og:title"})['content']
+        post = soup.find(attrs={"property": "og:description"})['content']
+        if post:
+            return f"{logo}: \x0305{user}\x0f {post}"
         return output
     except Exception:
         return output
