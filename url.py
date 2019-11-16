@@ -142,23 +142,28 @@ def default_parser(u):
 #                                            #
 def youtube(url):
     '''Visit a video and get it's information.'''
-    r = requests.get(url, headers={"Accept-Language": accept_lang}, timeout=10)
-    soup = bs4.BeautifulSoup(r.text, parser)
-    name = soup.find(attrs={"itemprop": "name"})['content']
-    channel = soup.find(attrs={"class": "yt-user-info"}).text.strip()
-    duration = soup.find(attrs={"itemprop": "duration"})['content']
-    duration = duration[2:][:-1].split('M')
-    mins = int(duration[0])
-    if mins > 59:
-        mins = '{:02d}:{:02d}'.format(*divmod(mins, 60))  # wont do days
-    if len(duration[1]) < 2:
-        secs = f'0{duration[1]}'
-    else:
-        secs = duration[1]
-    duration = f'{mins}:{secs}'
-    out = (f"\x0300,04 ► \x0F: {name} ({duration})"
-           f" | \x02Channel:\x0F {channel}")
-    return out
+    try:
+        r = requests.get(url, headers={"Accept-Language": accept_lang},
+                         timeout=10)
+        soup = bs4.BeautifulSoup(r.text, parser)
+        name = soup.find(attrs={"itemprop": "name"})['content']
+        channel = soup.find(attrs={"class": "yt-user-info"}).text.strip()
+        duration = soup.find(attrs={"itemprop": "duration"})['content']
+        duration = duration[2:][:-1].split('M')
+        mins = int(duration[0])
+        if mins > 59:
+            mins = '{:02d}:{:02d}'.format(*divmod(mins, 60))  # wont do days
+        if len(duration[1]) < 2:
+            secs = f'0{duration[1]}'
+        else:
+            secs = duration[1]
+            duration = f'{mins}:{secs}'
+            out = (f"\x0300,04 ► \x0F: {name} ({duration})"
+                   f" | \x02Channel:\x0F {channel}")
+        return out
+    except Exception:
+        out = default_parser(url)[0]
+        return f"\x0300,04 ► \x0F: {out}"
 
 
 def lainchan(url):
