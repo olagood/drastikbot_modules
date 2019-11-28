@@ -143,7 +143,9 @@ def default_parser(u):
 def youtube(url):
     '''Visit a video and get it's information.'''
     try:
-        r = requests.get(url, headers={"Accept-Language": accept_lang},
+        r = requests.get(url,
+                         headers={"user-agent": user_agent,
+                                  "Accept-Language": accept_lang},
                          timeout=10)
         soup = bs4.BeautifulSoup(r.text, parser)
         name = soup.find(attrs={"itemprop": "name"})['content']
