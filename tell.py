@@ -33,33 +33,33 @@ class Module:
         self.commands = ['tell']
         self.auto = True
         self.helpmsg = [
-            "Usage: .tell <Reciever> <Message>",
+            "Usage: .tell <Receiver> <Message>",
             " ",
             "Send a message to a user through the bot. This is used to send",
-            "messages to users that are not connected to the server. The bot",
-            "will message this user as soon as they post to channel the bot",
-            "has joined."]
+            "messages to users that are AFK or not connected to the server.",
+            "The bot will message the receiver as soon as they post to a",
+            "channel that the bot has joined."]
 
 
-def add(reciever, msg, sender, dbc):
+def add(receiver, msg, sender, dbc):
     timestamp = datetime.datetime.utcnow().replace(microsecond=0)
     dbc.execute("CREATE TABLE IF NOT EXISTS tell "
-                "(reciever TEXT COLLATE NOCASE, msg TEXT, sender TEXT, "
+                "(receiver TEXT COLLATE NOCASE, msg TEXT, sender TEXT, "
                 "timestamp TEXT, date INTEGER);")
     dbc.execute("INSERT INTO tell VALUES (?, ?, ?, ?, strftime('%s', 'now'));",
                 # These are wrong but handled correctly. Fix it someday.
-                (reciever, msg, str(timestamp), sender))
+                (receiver, msg, str(timestamp), sender))
 
 
 def find(nick, irc, dbc):
     try:
         dbc.execute('SELECT sender, msg, timestamp FROM tell '
-                    'WHERE reciever=?;', (nick,))
+                    'WHERE receiver=?;', (nick,))
         fetch = dbc.fetchall()
         for i in fetch:
             irc.privmsg(nick, f'\x0302{i[2]} [{i[0]} UTC]:\x0F')
             irc.privmsg(nick, i[1])
-        dbc.execute('''DELETE FROM tell WHERE reciever=?;''', (nick,))
+        dbc.execute('''DELETE FROM tell WHERE receiver=?;''', (nick,))
         # Delete messages older than 3600 * 24 * 30 * 3 seconds.
         dbc.execute('''DELETE FROM tell WHERE
                     (strftime('%s', 'now') - date) > (3600 * 24 * 30 * 3);''')
@@ -73,21 +73,21 @@ def main(i, irc):
     if 'tell' == i.cmd:
         try:
             arg_list = i.msg_nocmd.split(' ', 1)
-            reciever = arg_list[0]
+            receiver = arg_list[0]
             msg = arg_list[1]
         except IndexError:
-            help_msg = f"Usage: {i.cmd_prefix}{i.cmd} <Reciever> <Message>"
+            help_msg = f"Usage: {i.cmd_prefix}{i.cmd} <Receiver> <Message>"
             return irc.privmsg(i.channel, help_msg)
-        if i.nickname.lower() == reciever.lower():
+        if i.nickname.lower() == receiver.lower():
             return irc.privmsg(i.channel, 'You can tell yourself that.')
-        if irc.var.curr_nickname.lower() == reciever.lower():
+        if irc.var.curr_nickname.lower() == receiver.lower():
             return irc.privmsg(i.channel,
                                f'{i.nickname}: I am here now, tell me.')
-        if is_ignored(i, irc, reciever, i.nickname):
+        if is_ignored(i, irc, receiver, i.nickname):
             return  # say nothing
-        add(reciever, msg, i.nickname, dbc)
+        add(receiver, msg, i.nickname, dbc)
         irc.privmsg(i.channel,
-                    f'{i.nickname}: I will tell {reciever} '
+                    f'{i.nickname}: I will tell {receiver} '
                     'when they are around.')
 
     find(i.nickname, irc, dbc)
