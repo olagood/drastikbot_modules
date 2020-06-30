@@ -14,7 +14,7 @@
 #   - beautifulsoup :: $ pip3 install beautifulsoup4
 
 '''
-Copyright (C) 2018 drastik.org
+Copyright (C) 2018-2020 drastik.org
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -31,8 +31,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
 import urllib.parse
+import json
 import requests
 import bs4
+
+import url
 
 
 class Module:
@@ -47,41 +50,90 @@ class Module:
 # ----- Constants ----- #
 parser = 'html.parser'
 lang = "en-US"
+user_agent = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+              " AppleWebKit/537.36 (KHTML, like Gecko)"
+              " Chrome/83.0.4103.116 Safari/537.36")
 # --------------------- #
 
 
-def yt_vid_info(yt_id):
-    '''Visit a video and get it's information.'''
-    url = f'https://www.youtube.com/watch?v={yt_id}'
+#
+# New Parser
+#
+
+def yt_vid_info(v):
+    yt_id = v["videoId"]
     short_url = f"https://youtu.be/{yt_id}"
-    r = requests.get(url, headers={"Accept-Language": lang}, timeout=10)
-    soup = bs4.BeautifulSoup(r.text, parser)
-    date = soup.find(attrs={"itemprop": "datePublished"})['content']
-    name = soup.find(attrs={"itemprop": "name"})['content']
-    views = "{:,}".format(int(soup.find(
-        attrs={"itemprop": "interactionCount"})['content']))
-    genre = soup.find(attrs={"itemprop": "genre"})['content']
-    channel = soup.find(attrs={"class": "yt-user-info"}).text.strip()
-    likes = soup.find(attrs={"title": "I like this"}).text.strip()
-    dislikes = soup.find(attrs={"title": "I dislike this"}).text.strip()
-    duration = soup.find(attrs={"itemprop": "duration"})['content']
-    duration = duration[2:][:-1].split('M')
-    mins = int(duration[0])
-    if mins > 59:
-        mins = '{:02d}:{:02d}'.format(*divmod(mins, 60))  # wont do days
-    if len(duration[1]) < 2:
-        secs = f'0{duration[1]}'
-    else:
-        secs = duration[1]
-    duration = f'{mins}:{secs}'
+    name = v["title"]["runs"][0]["text"]
+    # Usually youtube's automated music uploads dont have dates.
+    try:
+        date = v["publishedTimeText"]["simpleText"]
+    except KeyError:
+        date = False
+    duration = v["lengthText"]["simpleText"]
+    views = v["viewCountText"]["simpleText"]
+    channel = v["ownerText"]["runs"][0]["text"]
+
     return {
         'short_url': short_url, 'name': name, 'date': date, 'views': views,
-        'genre': genre, 'channel': channel, 'likes': likes,
-        'dislikes': dislikes, 'duration': duration, 'yt_id': yt_id
+        'channel': channel, 'duration': duration, 'yt_id': yt_id
     }
 
 
 def yt_search(query):
+    search = (f'https://www.youtube.com/results?search_query={query}'
+              '&app=desktop')
+    r = requests.get(search, timeout=10,
+                     headers={"Accept-Language": lang,
+                              "user-agent": user_agent})
+
+    st = 'window["ytInitialData"] = '
+    st_i = r.text.index(st) + len(st)
+
+    j_data = r.text[st_i:]
+
+    st = 'window["ytInitialPlayerResponse"]'
+    st_i = j_data.index(st)
+
+    j_data = j_data[:st_i]
+    j_data = j_data.strip()
+    j_data = j_data[:-1]  # remove the ;
+
+    j = json.loads(j_data)
+
+    res = j["contents"]['twoColumnSearchResultsRenderer']['primaryContents'][
+        'sectionListRenderer']['contents'][0]['itemSectionRenderer'][
+        'contents']  # What in the world?
+
+    for vid in res:
+        if "videoRenderer" in vid:
+            v = vid["videoRenderer"]  # Video information
+            return yt_vid_info(v)
+        elif 'searchPyvRenderer' in vid:
+            continue  # Skip promoted videos
+
+
+def output(i):
+    '''Format the output message to be returned.'''
+    # logo_yt = "\x0301,00You\x0300,04Tube\x0F"
+    logo_yt = "\x0300,04 ► \x0F"
+
+    if i["date"]:
+        date = f" | \x02Uploaded:\x0F {i['date']}"
+    else:
+        date = ""
+
+    return (f"{logo_yt}: {i['short_url']} | "
+            f"\x02{i['name']}\x0F ({i['duration']})"
+            f" | \x02Views:\x0F {i['views']}"
+            f" | \x02Channel\x0F: {i['channel']}"
+            f"{date}")
+
+
+#
+# Old parser
+#
+
+def yt_search_legacy(query):
     '''
     Search YouTube for 'query' and get a video from the search results.
     It tries to visit the video found to ensure that it is valid.
@@ -89,12 +141,15 @@ def yt_search(query):
         - 'yt_id' : The YouTube ID of the result video.
         - False   : If no video is found for 'query'.
     '''
-    search = f'https://www.youtube.com/results?search_query={query}'
+    search = (f'https://m.youtube.com/results?search_query={query}')
     r = requests.get(search, headers={"Accept-Language": lang}, timeout=10)
+    #print(r.text, file=open("output.html", "a"))
     soup = bs4.BeautifulSoup(r.text, parser)
     for s in soup.find_all('a', {'class': ['yt-uix-tile-link']}):
         yt_id = urllib.parse.urlparse(s.get('href')).query
+        print(yt_id)
         yt_id = urllib.parse.parse_qs(yt_id)
+        print(yt_id)
         try:
             yt_id = yt_id['v'][0]
         except KeyError:
@@ -105,7 +160,7 @@ def yt_search(query):
         yt_id = ''.join(yt_id.split())
         # Try to visit the url to make sure it's a valid one.
         try:
-            u = f'https://www.youtube.com/watch?v={yt_id}'
+            u = f'https://m.youtube.com/watch?v={yt_id}'
             requests.get(u, timeout=10)
             break
         except Exception:
@@ -115,23 +170,20 @@ def yt_search(query):
     return yt_id
 
 
-def output(yt_url):
+def output_legacy(yt_id):
     '''Format the output message to be returned.'''
-    # logo_yt = "\x0301,00You\x0300,04Tube\x0F"
-    logo_yt = "\x0300,04 ► \x0F"
-    i = yt_vid_info(yt_url)
-    return (f"{logo_yt}: {i['short_url']} | "
-            f"\x02{i['name']}\x0F ({i['duration']})"
-            f" | \x02Views:\x0F {i['views']}"
-            f" | \x02Channel\x0F: {i['channel']}"
-            f" | \x02Date:\x0F {i['date']}"
-            f" | \x02Genre:\x0F {i['genre']}"
-            f" | \x0303+{i['likes']}\x0F"
-            f" | \x0304-{i['dislikes']}\x0F |")
+    logo_yt = "\x0300,04 ► \x0F (legacy)"
+    short_url = f"https://youtu.be/{yt_id}"
+    title = url.youtube(short_url)
+    return f"{logo_yt}: {short_url} | {title}"
 
 
 def main(i, irc):
     if i.cmd:
         query = urllib.parse.quote_plus(i.msg_nocmd)
-        out = output(yt_search(query))
+        try:
+            out = output(yt_search(query))
+        except Exception as e:
+            print(e)
+            out = output_legacy(yt_search_legacy(query))
         irc.privmsg(i.channel, out)
