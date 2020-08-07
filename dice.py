@@ -44,7 +44,7 @@ def main(i, irc):
         results = [ random.randint(1, n_sides) for i in range(n_dice) ]
         irc.privmsg(
             i.channel,
-            f"{i.nickname} rolled {n_dice} {'die' if n_dice == 1 else 'dice'} with {n_sides} sides: {', '.join(map(str, results))}"
+            f"{i.nickname} rolled {n_dice} {'die' if n_dice == 1 else 'dice'} with {n_sides} sides: {', '.join(map(str, results))} (Total: {sum(results)})"
         )
     except:
         irc.notice(
