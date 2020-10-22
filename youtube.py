@@ -86,18 +86,19 @@ def yt_search(query):
                      headers={"Accept-Language": lang,
                               "user-agent": user_agent})
 
-    st = 'window["ytInitialData"] = '
-    st_i = r.text.index(st) + len(st)
+    try:
+        st = 'var ytInitialData = '
+        st_i = r.text.index(st) + len(st)
+    except ValueError:
+        st = 'window["ytInitialData"] = '
+        st_i = r.text.index(st) + len(st)
 
     j_data = r.text[st_i:]
 
-    st = 'window["ytInitialPlayerResponse"]'
+    st = '};'
     st_i = j_data.index(st)
 
-    j_data = j_data[:st_i]
-    j_data = j_data.strip()
-    j_data = j_data[:-1]  # remove the ;
-
+    j_data = j_data[:st_i+1]
     j = json.loads(j_data)
 
     res = j["contents"]['twoColumnSearchResultsRenderer']['primaryContents'][
