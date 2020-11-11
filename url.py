@@ -352,5 +352,10 @@ def main(i, irc):
         if not title:
             continue
 
+        # Add invisible padding at start to avoid
+        # triggering the command of another irc bot
+        # Two bold formating chars cancel each other
+        title = f"\x02\x02{text}"
+
         irc.privmsg(i.channel, title)
         prev_u.add(u)
