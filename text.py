@@ -26,7 +26,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 class Module:
     def __init__(self):
         self.commands = [
-            "ae", "text-c", "text-nc", "text-s", "text-ns", "flag"
+            "ae", "text-c", "text-nc", "text-s", "text-ns", "flag", "cirrus",
+            "strike", "strikethrough"
         ]
         self.manual = {
             "desc": "Text transformation tools",
@@ -45,7 +46,14 @@ class Module:
                          "info": ("Transforms two letter country codes to"
                                   " regional indicator symbols.")},
                 "cirrus": {"usage": lambda p: f"{p}cirrus <text>",
-                           "info": "Example: Hello, WWorld!"
+                           "info": "Example: Hello, WWorld!"},
+                "strike": {"usage": lambda p: f"{p}strike <text>",
+                           "info": "Example: H̶e̶l̶l̶o̶,̶ ̶W̶o̶r̶l̶d̶!̶",
+                           "alias": ["strikethrough"]},
+                "strikethrough": {
+                    "usage": lambda p: f"{p}strikethrough <text>",
+                    "info": "Example: H̶e̶l̶l̶o̶,̶ ̶W̶o̶r̶l̶d̶!̶",
+                    "alias": ["strike"]
                 }
             }
         }
@@ -119,6 +127,10 @@ def cirrus(text):
         words[i] = f"{words[i][0]}{words[i]}"
 
     return " ".join(words)
+
+
+def strikethrough(text):
+    return "\u0336".join(text) + '\u0336'
 
 
 def main(i, irc):
