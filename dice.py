@@ -4,6 +4,8 @@
 
 '''
 Copyright (c) 2020 Tekdude <tekdude@gmail.com>
+Copyright (c) 2021 drastik <drastik.org> <derezzed@protonmail.com>
+
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
 the Software without restriction, including without limitation the rights to
@@ -40,19 +42,22 @@ class Module:
 
 
 def main(i, irc):
-    try:
-        values = i.msg_nocmd.split('d')
-        if len(values) != 2: raise ValueError()
-        n_dice = int(values[0])
-        n_sides = int(values[1])
-        results = [ random.randint(1, n_sides) for i in range(n_dice) ]
-        m = (f"{i.nickname} rolled {n_dice} {'die' if n_dice == 1 else 'dice'}"
-             f" with {n_sides} sides: {', '.join(map(str, results))}"
-             f" (Total: {sum(results)})")
-        irc.privmsg(i.channel, m)
-    except Exception:
-        irc.privmsg(
-            i.channel,
-            f"The dice notation '{i.msg_nocmd}' is invalid."
-            " Type '.help roll' to learn about rolling dice."
-        )
+    values = i.msg_nocmd.split('d')
+    if len(values) != 2:
+        irc.notice(i.channel, f"Usage: {i.cmd_prefix}roll <n>d<s>")
+        return
+
+    n_dice = int(values[0])
+    n_sides = int(values[1])
+    results = [random.randint(1, n_sides) for i in range(n_dice)]
+
+    limit = 15  # ToDo: Let chanops choose the limit
+    if len(results) > limit:
+        results_p = ", ".join(map(str, results[:limit])) + "..."
+    else:
+        results_p = ", ".join(map(str, results))
+
+    m = (f"{i.nickname} rolled {n_dice} {'die' if n_dice == 1 else 'dice'}"
+         f" with {n_sides} sides: {results_p} (Total: {sum(results)})")
+
+    irc.privmsg(i.channel, m)
