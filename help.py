@@ -72,10 +72,14 @@ def hidden_status(i, module_name: str) -> bool:
         return True  # No Module class, it's hidden
 
     if hasattr(module_object.Module(), "manual"):
-        return module_object.Module().helpmsg
+        return module_object.Module().manual
     elif hasattr(module_object.Module(), "helpmsg"):  # Old method
         if "__hidden__" in  module_object.Module().helpmsg:
             return "hidden"
+
+
+def is_hidden(i, module_name):
+    return hidden_status(i, module_name) == "hidden"
 
 
 def module_checks(i, irc, module):
