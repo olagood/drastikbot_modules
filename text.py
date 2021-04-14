@@ -140,6 +140,8 @@ def main(i, irc):
 
     if i.cmd == "cirrus":
         return irc.privmsg(i.channel, cirrus(s))
+    if i.cmd == "strike" or i.cmd == "strikethrough":
+        return irc.privmsg(i.channel, strikethrough(s))
 
     t = s.translate(command_map_d[i.cmd])
     if i.cmd == "ae" and t == s:
