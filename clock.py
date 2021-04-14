@@ -37,9 +37,12 @@ import requests
 class Module():
     def __init__(self):
         self.commands = ["time"]
-        self.helpmsg = ["Usage: .time <Country / City / State>",
-                        " ",
-                        "Show the"]
+        self.manual = {
+            "desc": "Get time information about a country, a city, or a state",
+            "bot_commands": {
+                "time": {"usage": lambda x: f"{x}time <country/city/state>"}
+            }
+        }
 
 
 username = "bugmenotuser"
@@ -69,9 +72,12 @@ def get_timezone_from_name(query):
     r = requests.get(api_url, timeout=30)
     j = r.json()
 
-    gmtOffset = j['gmtOffset']
-    countryName = j['countryName']
-    time = j['time']
+    try:
+        gmtOffset = j['gmtOffset']
+        countryName = j['countryName']
+        time = j['time']
+    except KeyError:
+        return f'Time: "{query}" is not a valid location'
 
     ret = f"Time in {name}, {countryName}: {time} GMT {gmtOffset}"
     return ret
