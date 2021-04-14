@@ -26,25 +26,29 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 class Module:
     def __init__(self):
         self.commands = [
-            'ae', 'fullwidth_text',
-            'c_text', 'circled_text',
-            'nc_text', 'negative_circled_text',
-            's_text', 'squared_text',
-            'ns_text', 'negative_squared_text',
-            'flag', 'regional_indicator_symbol_text'
+            "ae", "text-c", "text-nc", "text-s", "text-ns", "flag"
         ]
-        self.helpmsg = [
-            "Usage: .ae <Text> | .fullwidth",
-            "       .circled_text <Text> | .c_text",
-            "       .negative_circled_text <Text> | .nc_text",
-            "       .squared_text <Text> | .s_text",
-            "       .negative_squared_text <Text> | .ns_text",
-            "       .flag <Text> | .regional_indicator_symbol_text"
-            " ",
-            "Transform textual input to various other styles.",
-            " ",
-            "Example: <Alice> : .ae Hello, World!",
-            "         Bot     : Ｈｅｌｌｏ，　Ｗｏｒｌｄ！"]
+        self.manual = {
+            "desc": "Text transformation tools",
+            "bot_commands": {
+                "ae": {"usage": lambda p: f"{p}ae <text>",
+                       "info": "Example: Ｈｅｌｌｏ，　Ｗｏｒｌｄ！"},
+                "text-c": {"usage": lambda p: f"{p}text-c <text>",
+                           "info": "Example: ⒽⒺⓁⓁⓄ, ⓌⓄⓇⓁⒹ!"},
+                "text-nc": {"usage": lambda p: f"{p}text-nc <text>",
+                            "info": "Example: 🅗🅔🅛🅛🅞, 🅦🅞🅡🅛🅓!"},
+                "text-s": {"usage": lambda p: f"{p}text-s <text>",
+                           "info": "Example: 🄷🄴🄻🄻🄾, 🅆🄾🅁🄻🄳!"},
+                "text-ns": {"usage": lambda p: f"{p}text-ns <text>",
+                            "info": "Example: 🅷🅴🅻🅻🅾, 🆆🅾🆁🅻🅳!"},
+                "flag": {"usage": lambda p: f"{p}flag <text>",
+                         "info": ("Transforms two letter country codes to"
+                                  " regional indicator symbols.")},
+                "cirrus": {"usage": lambda p: f"{p}cirrus <text>",
+                           "info": "Example: Hello, WWorld!"
+                }
+            }
+        }
 
 
 # https://en.wikipedia.org/wiki/Halfwidth_and_fullwidth_forms_(Unicode_block)
@@ -91,27 +95,40 @@ REGIONAL_INDICATOR_SYMBOL_MAP = {
     **_REGIONAL_INDICATOR_SYMBOL_L_MAP
 }
 
-
 command_map_d = {
-    'ae': FULLWIDTH_MAP,
-    'fullwidth_text': FULLWIDTH_MAP,
-    'c_text': CIRCLED_MAP,
-    'circled_text': CIRCLED_MAP,
-    'nc_text': NEGATIVE_CIRCLED_MAP,
-    'negative_circled_text': SQUARED_MAP,
-    's_text': SQUARED_MAP,
-    'squared_text': SQUARED_MAP,
-    'ns_text': NEGATIVE_SQUARED_MAP,
-    'negative_squared_text': NEGATIVE_SQUARED_MAP,
-    'flag': REGIONAL_INDICATOR_SYMBOL_MAP,
-    'regional_indicator_symbol_text': REGIONAL_INDICATOR_SYMBOL_MAP
+    "ae": FULLWIDTH_MAP,
+    "text-c": CIRCLED_MAP,
+    "text-nc": NEGATIVE_CIRCLED_MAP,
+    "text-s": SQUARED_MAP,
+    "text-ns": NEGATIVE_SQUARED_MAP,
+    "flag": REGIONAL_INDICATOR_SYMBOL_MAP,
 }
+
+
+def cirrus(text):
+    words = text.split()
+    wc = len(words)
+    cc = 0
+    for i in range(wc):
+        if random.uniform(0, 1) < 0.38:
+            cc += 1
+            words[i] = f"{words[i][0]}{words[i]}"
+
+    if cc == 0:
+        i = random.randint(0, wc - 1)
+        words[i] = f"{words[i][0]}{words[i]}"
+
+    return " ".join(words)
 
 
 def main(i, irc):
     if not i.msg_nocmd:
         return
     s = i.msg_nocmd
+
+    if i.cmd == "cirrus":
+        return irc.privmsg(i.channel, cirrus(s))
+
     t = s.translate(command_map_d[i.cmd])
     if i.cmd == "ae" and t == s:
         t = s.replace("", " ")[1: -1]
