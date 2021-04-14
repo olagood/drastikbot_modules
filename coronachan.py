@@ -7,10 +7,15 @@ url = 'https://www.worldometers.info/coronavirus/'
 class Module:
     def __init__(self):
         self.commands = ['corona', 'coronachan']
-        self.helpmsg = [
-            "Usage: .corona or .coronachan",
-            " ",
-            "Useful stats related to 2019-nCov"]
+        self.manual = {
+            "desc": "Useful stats related to 2019-nCov",
+            "bot_commands": {
+                "corona": {"usage": ".corona",
+                           "alias": ["coronachan"]},
+                "coronachan": {"usage": ".coronachan",
+                               "alias": ["corona"]}
+            }
+        }
 
 
 def main(i, irc):
