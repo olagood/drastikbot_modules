@@ -118,8 +118,8 @@ def module_help(i, irc, module):
         commands = f"Commands: {commands} | "
 
     info = ""
-    if "__module__" in module_c.manual:
-        info = module_c.manual["__module__"]
+    if "desc" in module_c.manual:
+        info = module_c.manual["desc"]
         info = f"Info: {info}"
 
     t = f"\x0311{module}\x0F: {commands}{info}"
@@ -137,10 +137,17 @@ def command_help(i, irc, module, command):
         irc.notice(i.channel, "Help: This module does not provide commands.")
         return
 
-    if command not in module_c.manual:
+    if "bot_commands" not in module_c.manual:
+        irc.notice(i.channel, "Help: No manual entry for this command ")
+        return
+
+    command_manual = module_c.manual["bot_commands"]
+
+    if command not in command_manual:
         irc.notice(i.channel, "Help: No manual entry for this command.")
         return
-    command_entry = module_c.manual[command]
+
+    command_entry = command_manual["command"]
 
     t = []
 
