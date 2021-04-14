@@ -152,7 +152,7 @@ def command_help(i, irc, module, command):
     t = []
 
     if "usage" in command_entry:
-        usage = command_entry["usage"](i)
+        usage = command_entry["usage"](i.cmd_prefix)
         usage = f"Usage: {usage}"
         t.append(usage)
 
