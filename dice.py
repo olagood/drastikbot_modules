@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # coding=utf-8
 
 # Virtual D&D style dice rolling
@@ -27,12 +26,17 @@ import random
 class Module:
     def __init__(self):
         self.commands = ['roll']
-        self.helpmsg = [
-            "Usage: .roll <N>d<S>",
-            " ",
-            "Rolls <N> number of virtual dice, each with <S> number of sides, and returns the results.",
-            "Examples: '.roll 1d20' Rolls a single 20 sided die",
-            "          '.roll 2d6' Rolls two 6 sided dice"]
+        self.manual = {
+            "desc": "Virtual D&D style dice rolling.",
+            "bot_commands": {
+                "roll": {
+                    "usage": lambda x: f"{x}roll <n>d<s>",
+                    "info": ("Rolls <n> number of virtual dice, each with"
+                             " <S> number of sides and returns the result"
+                             ". Example: \".roll 2d6\" rolls two six sided"
+                             " dice.")}
+            }
+        }
 
 
 def main(i, irc):
@@ -42,12 +46,13 @@ def main(i, irc):
         n_dice = int(values[0])
         n_sides = int(values[1])
         results = [ random.randint(1, n_sides) for i in range(n_dice) ]
+        m = (f"{i.nickname} rolled {n_dice} {'die' if n_dice == 1 else 'dice'}"
+             f" with {n_sides} sides: {', '.join(map(str, results))}"
+             f" (Total: {sum(results)})")
+        irc.privmsg(i.channel, m)
+    except Exception:
         irc.privmsg(
             i.channel,
-            f"{i.nickname} rolled {n_dice} {'die' if n_dice == 1 else 'dice'} with {n_sides} sides: {', '.join(map(str, results))} (Total: {sum(results)})"
-        )
-    except:
-        irc.notice(
-            i.nickname,
-            f"The dice notation '{i.msg_nocmd}' is invalid. Type '.roll help' to learn about rolling dice."
+            f"The dice notation '{i.msg_nocmd}' is invalid."
+            " Type '.help roll' to learn about rolling dice."
         )
