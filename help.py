@@ -151,7 +151,7 @@ def command_help(i, irc, module, command):
         irc.notice(i.channel, "Help: No manual entry for this command.")
         return
 
-    command_entry = command_manual["command"]
+    command_entry = command_manual[command]
 
     t = []
 
