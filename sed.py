@@ -37,23 +37,17 @@ from dbot_tools import p_truncate
 class Module:
     def __init__(self):
         self.auto = True
-        self.helpmsg = [
-            "Usage: s/regexp/replacement/flags",
-            " ",
-            "Try to match a 'regexp' with one of the previous messages posted",
-            "and replace it with 'replacement'.",
-            "For flags and a detailed explanation see:",
-            "https://www.gnu.org/software/sed/manual/html_node/"
-            "The-_0022s_0022-Command.html",
-            " ",
-            "Drastikbot Extensions:",
-            "  s///-n : n is the number of matches to skip. This flag allows",
-            "           you to skip matched messages. If the 'number' flag is",
-            "           used then -n should be used after it.",
-            " ",
-            "Example: <Alice> : testing the sed module",
-            "         <Bob>   : s/sed module/irc bot/",
-            "         Bot     : testing the irc bot"]
+        self.manual = {
+            "desc": (
+                "Usage: s/regexp/replacement/flags"
+                " | Try to match a 'regexp' with one of the previous"
+                " messages posted and replace it with 'replacement'."
+                " For flags and a detailed explanation see:"
+                " https://www.gnu.org/software/sed/manual/html_node/"
+                "The-_0022s_0022-Command.html"
+                " | Extensions: \"s///-n\" n is the number of matches to skip"
+                " If the 'number' flag is used -n should be used after it.")
+        }
 
 
 def write(varget, varset, channel, msg):
