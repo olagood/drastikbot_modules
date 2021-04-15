@@ -32,13 +32,14 @@ from dbot_tools import p_truncate
 class Module:
     def __init__(self):
         self.commands = ['ud']
-        self.helpmsg = [
-            "Usage: .ud <QUERY> [--def <NUM>]",
-            " ",
-            "Search https://www.urbandictionary.com/ for definitions.",
-            "The --def option allows you to select other definitions.",
-            "Examples: .ud irc",
-            "          .ud irc --def 2"]
+        self.manual = {
+            "desc": "Search https://www.urbandictionary.com/ for definitions.",
+            "bot_commands": {
+                "ud": {"usage": lambda x: f"{x}ud <query> [--def <num>]",
+                       "info": ("The --def option allows you to select other"
+                                " definitions. Example: .ud irc --def 2")}
+            }
+        }
 
 
 def ud(query, res):
