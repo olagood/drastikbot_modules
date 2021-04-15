@@ -29,6 +29,10 @@ import random
 class Module():
     def __init__(self):
         self.commands = ['tarot']
+        self.manual = {
+            "desc": "Draws three cards from the tarot deck.",
+            "bot_commands": {"tarot": {"usage": lambda x: f"{x}tarot"}}
+        }
 
 
 major_arcana = [
