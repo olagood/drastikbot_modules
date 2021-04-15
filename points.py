@@ -26,10 +26,13 @@ class Module:
     def __init__(self):
         self.commands = ["points"]
         self.auto = True
-        self.helpmsg = ["Usage: .points",
-                        " ",
-                        "Count a user's karma points.",
-                        ".points : Show the total points a user has."]
+        self.manual = {
+            "desc": "Count a user's GNU/Linux points.",
+            "bot_commands": {
+                "points": lambda x: f"{x}points",
+                "info": "Show your total amount of points."
+            }
+        }
 
 
 def set_gnu_linux_points(dbc, nickname, points):
