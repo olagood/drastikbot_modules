@@ -41,10 +41,10 @@ import url
 class Module:
     def __init__(self):
         self.commands = ['yt']
-        self.helpmsg = [
-            "Usage: .yt <Video Title>",
-            " ",
-            "Search YouTube and return the resulting video."]
+        self.manual = {
+            "desc": "Search YouTube and return the resulting video url.",
+            "bot_commands": {"yt": {"usage": lambda x: f"{x}yt <video title>"}}
+        }
 
 
 # ----- Constants ----- #
