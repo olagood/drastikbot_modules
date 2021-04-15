@@ -33,20 +33,36 @@ from user_auth import user_auth
 class Module:
     def __init__(self):
         self.commands = ['weather', 'weather_set', 'weather_auth']
-        self.helpmsg = [
-            "Usage: .weather <Location / Airport code / @domain / IP address"
-            " / Area code / GPS coordinates>",
-            " ",
-            "Show weather information from http://wttr.in",
-            ".weather      : Get weather information.",
-            ".weather_set  : Set your location",
-            ".weather_auth : Enable/Disable NickServ authentication for ",
-            "                .weather_set",
-            " ",
-            "If a location has been set, calling .weather without arguments",
-            "will return the weather for that location, otherwise you will be",
-            "asked to provide a location.",
-            "To unset your location use .weather_set without any arguements."]
+        self.manual = {
+            "desc": "Show weather information from http://wttr.in",
+            "bot_commands": {
+                "weather": {
+                    "usage": lambda x: (
+                        f"{x}weather <location / airport code / @domain"
+                        " / IP address / area code / GPS coordinates>"
+                    ),
+                    "info": "Get weather information."
+                },
+                "weather_set": {
+                    "usage": lambda x: (
+                        f"{x}weather_set <location / airport code / @domain"
+                        " / IP address / area code / GPS coordinates>"
+                    ),
+                    "info": (
+                        "Set your default location. If a location has been"
+                        " set, calling the weather command without arguments"
+                        " will return the weather for that location, otherwise"
+                        " you will be asked to provide a location. To unset"
+                        " your location use .weather_set without any"
+                        " arguements."
+                    )
+                },
+                "weather_auth": {
+                    "usage": lambda x: f"{x}weather_auth",
+                    "info": "Toggle NickServ authentication for weather_set"
+                }
+            }
+        }
 
 
 # Helper functions:
@@ -71,11 +87,11 @@ def temperature_color(temperature, unit_in, unit_out):
         10: "03", 19: "09", 28: "08", 37: "07"
     }
     if "°C" == unit_in:
-        celsius = int(temperature)
+        celsius = int(temperature.split("(")[0])
         fahrenheit = celsius * 1.8 + 32
         fahrenheit = int(round(fahrenheit, 0))
     elif "°F" == unit_in:
-        fahrenheit = int(temperature)
+        fahrenheit = int(temperature.split("(")[0])
         celsius = (fahrenheit - 32) / 1.8
         celsius = int(round(celsius, 0))
     else:
@@ -112,28 +128,6 @@ def temp_format(txt):
     unit_s = unit_swap(unit)
     ret = "Temp:"
 
-    # Old parsing for "dashes" format: [ - ]<temp>< - >[ - ]<temp>
-
-    # if 1 == dashes:
-    #     if not temperature[0] == '-':  # 25-27 °C
-    #         temp_list = temperature.split('-')  # ['25', '27']
-    #         ret = temp_format_range(temp_list, unit, unit_s)
-    #     else:  # -5 °C
-    #         ret += f"{temperature_color(temperature, unit, unit)} {unit} /"
-    #         ret += f"{temperature_color(temperature, unit, unit_s)} {unit_s}"
-    # elif 2 == dashes:  # -2-0 °C
-    #     temp_list = temperature.split('-', 2)  # ['', '2', '0']
-    #     temp_list = [f'-{temp_list[1]}', temp_list[2]]
-    #     ret = temp_format_range(temp_list, unit, unit_s)
-    # elif 3 == dashes:  # -5--2
-    #     temp_list = temperature.split('-', 2)  # ['', '-5', '-2']
-    #     temp_list = [f'-{temp_list[1]}', temp_list[2]]
-    #     ret = temp_format_range(temp_list, unit, unit_s)
-    # else:  # 5 °C
-    #     ret += f"{temperature_color(temperature, unit, unit)} {unit} /"
-    #     ret += f"{temperature_color(temperature, unit, unit_s)} {unit_s}"
-
-    # New parsing for "dotted" format: [ - ]<temp>< .. >[ - ]<temp>
     if '..' in temperature:
         temp_list = temperature.split('..')
         ret = temp_format_range(temp_list, unit, unit_s)
