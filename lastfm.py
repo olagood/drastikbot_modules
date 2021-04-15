@@ -10,7 +10,7 @@
 #   - requests      :: $ pip3 install requests
 
 '''
-Copyright (C) 2018 drastik.org
+Copyright (C) 2018, 2021 drastik.org
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -33,23 +33,19 @@ from user_auth import user_auth
 class Module():  # Request commands to be used by the module
     def __init__(self):
         self.commands = ['np', 'npset', 'npunset', 'npauth']
-        self.helpmsg = [
-            "Usage: .np [nickname]",
-            "       .npset <Last.fm Username>",
-            "       .npunset",
-            "       .nplock",
-            " ",
-            "Show the song currently playing using last.fm's scrobbler",
-            ".np       : Show the song the is playing right now.",
-            ".npset    : Set your last.fm username.",
-            ".npunset  : Unset your last.fm username.",
-            ".npauth   : Enable/Disable NickServ authentication for "
-            ".npset\.npunset",
-            " ",
-            "Examples: .npset Alice",
-            "          .np",
-            "          .npunset Alice",
-            "          .np Bob"]
+        self.manual = {
+            "desc": "Display your currently playing song using last.fm.",
+            "irc_commands": {
+                "np": {"usage": lambda x: f"{x}np [nickname]",
+                       "info": "Show the song that is playing right now."},
+                "npset": {"usage": lambda x: f"{x}npset <last.fm username>",
+                          "info": "Set your last.fm username."},
+                "npunset": {"usage": lambda x: f"{x}npunset",
+                            "info": "Unset your last.fm username."},
+                "npauth": {"usage": lambda x: f"{x}npauth",
+                           "info": "Toggle NickServ authentication for npset"},
+            }
+        }
 
 
 # ----- Constants ----- #
