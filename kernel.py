@@ -4,7 +4,8 @@
 # Quotes from various historical versions of the Linux kernel
 
 '''
-Copyright (C) 2018 drastik.org
+Copyright (C) 2021 Flisk <flisk@fastmail.de>
+Copyright (C) 2021 drastik.org
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,11 +27,15 @@ import random
 class Module:
     def __init__(self):
         self.commands = ['kernel']
-        self.helpmsg = [
-            "Usage: .kernel",
-            " ",
-            "Post quotes from various historical versions of the Linux kernel",
-            "http://www.schwarzvogel.de/software/misc.html"]
+        self.manual = {
+            "desc": (
+                "Post quotes from various historical versions of the"
+                " Linux kernel http://www.schwarzvogel.de/software/misc.html"
+            ),
+            "bot_commands": {
+                "usage": lambda x: f"{x}kernel"
+            }
+        }
 
 
 # Taken from the Kernelcookies fortune file curated by Tobias
