@@ -12,7 +12,7 @@
 #   - url           :: included with drastikbot_modules, should be loaded.
 
 '''
-Copyright (C) 2018 drastik.org
+Copyright (C) 2018, 2021 drastik.org
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -38,15 +38,17 @@ import url  # drastikbot_modules: url.py
 class Module:
     def __init__(self):
         self.commands = ['g', 'bing', 'ddg', 'searx', 'sp']
-        self.helpmsg = [
-            "Usage: .g <query>",
-            " ",
-            "Get results from Google, Bing, Duckduckgo, Searx and Startpage.",
-            ".g     : https://www.google.com/",
-            ".bing  : https://www.bing.com",
-            ".ddg   : https://duckduckgo.com/ (Also supports !bangs)",
-            ".searx : https://searx.me/",
-            ".sp    : https://www.startpage.com/"]
+        self.manual = {
+            "desc": ("Get search results from Duckduckgo, Google, Bing"
+                     ", Searx and Startpage."),
+            "bot_commands": {
+                "g": {"usage": lambda x: f"{x}g <query>"},
+                "bing": {"usage": lambda x: f"{x}bing <query>"},
+                "ddg": {"usage": lambda x: f"{x}ddg <query>"},
+                "searx": {"usage": lambda x: f"{x}searx <query>"},
+                "sp": {"usage": lambda x: f"{x}sp <query>"}
+            }
+        }
 
 
 # ----- Constants ----- #
@@ -151,8 +153,9 @@ def ddg(query, query_p):
     soup = bs4.BeautifulSoup(r.text, parser)
     err_str = (f'{logo}: \x0308Sorry, i could not find any results for:\x0F'
                f' {url2str(query)}')
-    for s in soup.find_all('a', {'class': ['result__url']}):
-        u = urllib.request.unquote(s.get('href'))[15:]
+    rl = soup.find_all("div", class_="result results_links results_links_deep web-result ")
+    for s in [x.find('a', {'class': ['result__a']}) for x in rl]:
+        u = urllib.request.unquote(s.get('href')).replace("//duckduckgo.com/l/?uddg=", "", 1)
         if u:
             u = urlfix(u)
         else:
