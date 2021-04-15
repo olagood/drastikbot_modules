@@ -31,10 +31,17 @@ import requests
 class Module:
     def __init__(self):
         self.commands = ['wa', 'wolfram', 'wolframalpha']
-        self.helpmsg = [
-            "Usage: .wa <Query>",
-            " ",
-            "Get results from the Wolfram|Alpha short answers API."]
+        self.manual = {
+            "desc": "Get results from the Wolfram|Alpha short answers API.",
+            "bot_commands": {
+                "wa": {"usage": lambda x: f"{x}wa <query>",
+                       "alias": ["wolfram", "wolframalpha"]},
+                "wolfram": {"usage": lambda x: f"{x}wolfram <query>",
+                       "alias": ["w", "wolframalpha"]},
+                "wolframalpha": {"usage": lambda x: f"{x}wolframalpha <query>",
+                       "alias": ["wolfram", "w"]}
+            }
+        }
 
 
 AppID = "Enter your AppID here"
