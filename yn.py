@@ -31,10 +31,12 @@ import random
 class Module:
     def __init__(self):
         self.commands = ['yn']
-        self.helpmsg = [
-            "Usage: .yn",
-            " ",
-            "Flip a virtual coin."]
+        self.manual = {
+            "desc": "Flip a virtual coin",
+            "bot_commands": {
+                "yn": {"usage": lambda x: f"{x}yn"}
+            }
+        }
 
 
 def main(i, irc):
