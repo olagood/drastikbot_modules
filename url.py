@@ -33,7 +33,6 @@ import bs4
 class Module:
     def __init__(self):
         self.auto = True
-        self.helpmsg = ["Visit posted urls and post their HTML <title> tag."]
 
 
 # ----- Constants ----- #
