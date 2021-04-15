@@ -36,23 +36,32 @@ from dbot_tools import Config, p_truncate
 class Module:
     def __init__(self):
         self.commands = ['wikipedia', 'wiki', 'w']
-        self.helpmsg = [
-            "Usage: .w <article> [--full, --search, --sections, -l], "
-            "[--result <NUM>]",
-            " ",
-            "Search wikipedia and post a snippet from the resulting article.",
-            "Options:",
-            "  --full         : Get the full section in a PM.",
-            "  --search       : Do a search and get a PM with the results.",
-            "  --sections     : Get a PM with all the sections of an article",
-            "  -l <lang>      : Post an article from a spefic language.",
-            "  --result <NUM> : Select a specific result. NUM is the index",
-            "                   of the result return by --search",
-            "  #<section>     : Get a snippet from a specific section",
-            "                   (case sensitive).",
-            "Examples: .w irc",
-            "          .w irc#Technical information",
-            "          .w irc --result 2"]
+
+        usage = lambda x, y: (f"{x}{y} <article> [--full] [--search]"
+                           " [--sections] [-l <lang>] [--resuult <num>]")
+        info = ("--info: Get the full section in a query."
+                " / --search: Search and get the results in a query."
+                " / --sections: Get all the sections of an article in a query."
+                " / -l: Post an article from a specific language"
+                " / --result: Select specific result."
+                " <num> is the index of the result returned by --search"
+                " / Use #section after the article's name to get a specific"
+                " section. Example: .w irc#Technical information")
+        self.manual = {
+            "desc": ("Search wikipedia and post a snippet from the resulting"
+                     " article."),
+            "bot_commands": {
+                "wikipedia": {"usage": lambda x: usage(x, "wikipedia"),
+                              "info": info,
+                              "alias": ["w", "wiki"]},
+                "wiki": {"usage": lambda x: usage(x, "wiki"),
+                         "info": info,
+                         "alias": ["w", "wikipedia"]},
+                "w": {"usage": lambda x: usage(x, "w"),
+                      "info": info,
+                      "alias": ["wikipedia", "wiki"]}
+            }
+        }
 
 
 # ----- Global Constants ----- #
