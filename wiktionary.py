@@ -33,15 +33,23 @@ from dbot_tools import p_truncate
 class Module:
     def __init__(self):
         self.commands = ['wiktionary', 'wt']
-        self.helpmsg = [
-            "Usage: .wt <Word> [-e <NUM>]",
-            " ",
-            "Search https://en.wiktionary.org/ for word definitions.",
-            "The -e option allows you to choose other defintions.",
-            "The number of definitions is listed in parenthesis",
-            "in the result.",
-            "If PMed, the bot will post the full definitions without",
-            "truncating the text."]
+
+        usage = lambda x, y: f"{x}{y} <word> [-e <num>]"
+        info = ("The -e option allows you to choose other defintions."
+                " The number of definitions is listed in parenthesis in the"
+                " result. In a query, the bot will post the full definitions"
+                " without truncating the text.")
+        self.manual = {
+            "desc": "Search https://en.wiktionary.org/ for word definitions.",
+            "bot_commands": {
+                "wiktionary": {"usage": lambda x: usage(x, "wiktionary"),
+                               "info": info,
+                               "alias": ["wt"]},
+                "wt": {"usage": lambda x: usage(x, "wt"),
+                       "info": info,
+                       "alias": ["wiktionary"]}
+            }
+        }
 
 
 # ----- Global Constants ----- #
