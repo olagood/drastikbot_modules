@@ -72,13 +72,16 @@ def main(i, irc):
         gl_p = get_gnu_linux_points(dbc, i.nickname)
         irc.privmsg(i.channel, f"GNU/Linux Points for {i.nickname}: {gl_p}")
 
+    if i.channel == i.nickname:
+        return
+
     last_nick = i.varget("last_nick", defval=irc.var.nickname)
     if last_nick == i.nickname:
         return
     else:
         i.varset("last_nick", i.nickname)
 
-    if "gnu/linux" in i.msg.lower():
+    if "gnu/linux" in i.msg.lower() or "gnu+linux" in i.msg.lower():
         gnu_linux_points_handler(dbc, i.nickname, mode="gnu")
     elif "linux" in i.msg.lower() and "linux kernel" not in i.msg.lower():
         gnu_linux_points_handler(dbc, i.nickname, mode="linux")
