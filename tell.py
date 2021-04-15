@@ -32,13 +32,17 @@ class Module:
     def __init__(self):
         self.commands = ['tell']
         self.auto = True
-        self.helpmsg = [
-            "Usage: .tell <Receiver> <Message>",
-            " ",
-            "Send a message to a user through the bot. This is used to send",
-            "messages to users that are AFK or not connected to the server.",
-            "The bot will message the receiver as soon as they post to a",
-            "channel that the bot has joined."]
+        self.manual = {
+            "desc": (
+                "Send a message to a user through the bot. This is used to"
+                " send messages to users that are AFK or not connected to "
+                "the server. The bot will message the receiver as soon as "
+                "they post to a channel that the bot has joined."
+            ),
+            "bot_commands": {
+                "tell": {"usage": lambda x: f"{x}tell <receiver> <message>"}
+            }
+        }
 
 
 def add(receiver, msg, sender, dbc):
