@@ -6,7 +6,7 @@
 # Save user quotes and send them to a channel upon request.
 
 '''
-Copyright (C) 2019 drastik.org
+Copyright (C) 2019-2021 drastik.org
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,7 +23,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
 import random
+import sqlite3
 
+from admin import is_allowed
 
 logo = "\x02quote\x0F"
 
@@ -32,35 +34,51 @@ class Module:
     def __init__(self):
         self.commands = ['quote', 'findquote', 'addquote', 'delquote',
                          'listquotes']
-        self.helpmsg = [
-            "Usage:",
-            "       .listquotes <#channel>",
-            "Usage [#channel only]:",
-            "       .quote [Nickname / ID / Query]",
-            "       .findquote <Query>",
-            "       .addquote <Nickname> <Quote>",
-            "       .delquote <ID>",
-            "Usage [PM only]:",
-            "       .quote <#channel> [Nickname / ID / Query]",
-            "       .findquote <#channel> <Query>",
-            "       .addquote <#channel> <Nickname> <Quote>",
-            " ",
-            "Save user quotes and send them upon request.",
-            ".quote : If no arguments are given, a random quote will be sent.",
-            "         If you pass aguments the bot will first try to match a ",
-            "         nickname, then an ID and at last a phrase.",
-            ".findquote : Try to match a given phrase and return the match. ",
-            "             If there are many matches send a random one.",
-            ".listquotes : List all the quotes the user that issued the ",
-            "              command is mentioned in. The list is sent by PM.",
-            ".addquote : Add a quote to the database.",
-            ".delquote : Delete a quote using it's ID."]
+        self.manual = {
+            "desc": "Saves user quotes and posts them when requested.",
+            "bot_commands": {
+                "quote": {
+                    "usage": lambda x: (
+                        f"[channels]: {x}quote [nickname/id/text]"
+                        f" | [queries]: {x}quote <#channel> [nickname/id/text]"
+                    ),
+                    "info": ("Without any arguments, a random quote will be"
+                             " posted. If arguments are given the will try to"
+                             " first match a nickname, then an ID and then"
+                             " the text of a quote.")
+                },
+                "findquote": {
+                    "usage": lambda x: (
+                        f"[channels]: {x}findquote <text>"
+                        f" | [queries]: {x}findquote <#channel> <text>"
+                    ),
+                    "info": ("Try to match the given text to a quote."
+                             " If a quote is found, it is posted.")
+                },
+                "addquote": {
+                    "usage": lambda x: f"{x}addquote <nickname> <quote>",
+                    "info": "Add a quote to the database."
+                },
+                "delquote": {
+                    "usage": lambda x: f"{x}delquote <id>",
+                    "info": "Delete a quote using its ID"
+                },
+                "listquotes": {
+                    "usage": lambda x: f"{x}listquotes <#channel>",
+                    "info": ("List all the quotes in which the the caller is"
+                             " mentioned in. The list is sent in a query.")
+                }
+            }
+        }
 
 
 def add(channel, quote, made_by, added_by, dbc):
-    dbc.execute("INSERT INTO quote(channel, quote, made_by, added_by) "
-                "VALUES (?, ?, ?, ?)", (channel, quote, made_by, added_by))
-    return f"{logo}: #{dbc.lastrowid} Added!"
+    try:
+        dbc.execute("INSERT INTO quote(channel, quote, made_by, added_by) "
+                    "VALUES (?, ?, ?, ?)", (channel, quote, made_by, added_by))
+        return f"{logo}: #{dbc.lastrowid} Added!"
+    except sqlite3.IntegrityError:
+        return f"{logo}: This quote has already been added."
 
 
 def delete(quote_id, dbc):
@@ -111,7 +129,7 @@ def _search_by_id(channel, text, dbc):
         return False
 
     try:
-        dbc.execute('SELECT * FROM quote WHERE num=?;', (text,))
+        dbc.execute('SELECT * FROM quote WHERE num=? AND channel=?;', (text, channel))
         f = dbc.fetchone()
         return f"{logo}: #{f[0]} | {f[2]} \x02-\x0F {f[3]} | Added by {f[4]}"
     except Exception:
@@ -151,7 +169,7 @@ def main(i, irc):
         CREATE TABLE IF NOT EXISTS quote
         (num     INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
         channel  TEXT,
-        quote    TEXT COLLATE NOCASE,
+        quote    TEXT COLLATE NOCASE UNIQUE,
         made_by  TEXT COLLATE NOCASE,
         added_by TEXT COLLATE NOCASE);''')
     dbc.execute(
@@ -228,29 +246,17 @@ def main(i, irc):
             m = f"{logo}: Usage: {i.cmd_prefix}{i.cmd} <ID>"
             irc.privmsg(i.channel, m)
             return
-        irc.privmsg(i.channel, delete(i.msg_nocmd, dbc))
+        if is_allowed(i, irc, i.nickname, i.channel):
+            irc.privmsg(i.channel, delete(i.msg_nocmd, dbc))
+        else:
+            m = f"{logo}: Only Channel Operators are allowed to delete quotes."
+            irc.privmsg(i.channel, m)
 
     elif 'addquote' == i.cmd:
         if i.is_pm:
-            if not i.msg_nocmd or len(i.msg_nocmd.split()) < 3:
-                m = (f"{logo}: Usage: {i.cmd_prefix}{i.cmd} "
-                     f"<#channel> <Nickname> <Quote>")
-                irc.privmsg(i.channel, m)
-                return
-            channel = i.msg_nocmd.split()[0]
-            if not channel[:1] == '#':
-                m = (f"{logo}: Usage: {i.cmd_prefix}{i.cmd} "
-                     f"<#channel> <Nickname> <Quote>")
-                irc.privmsg(i.channel, m)
-                return
-            if channel not in irc.var.namesdict:
-                m = f"{logo}: The bot has not joined the channel: {channel}"
-                irc.privmsg(i.channel, m)
-                return
-            made_by = i.msg_nocmd.split()[1]
-            quote_text = " ".join(i.msg_nocmd.split()[2:])
-            irc.privmsg(i.channel,
-                        add(channel, quote_text, made_by, i.nickname, dbc))
+            m = (f"{logo}: Please, submit the quote in the channel it was"
+                 " posted in.")
+            irc.privmsg(i.channel, m)
         else:
             if not i.msg_nocmd or len(i.msg_nocmd.split()) < 2:
                 m = f"{logo}: Usage: {i.cmd_prefix}{i.cmd} <Nickname> <Quote>"
