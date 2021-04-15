@@ -11,7 +11,7 @@
 
 '''
 Seen module for drastikbot.
-Copyright (C) 2018 drastik.org
+Copyright (C) 2018, 2021 drastik.org
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -34,17 +34,19 @@ class Module:
     def __init__(self):
         self.auto = True
         self.commands = ["seen"]
-        self.helpmsg = [
-            "Usage: .seen <nickname>",
-            " ",
-            "See when a user was last seen posting in a channel the bot has ",
-            "joined. If the user posted in channel other than the one the",
-            "command was given from, then the bot will show that channel.",
-            "Private messages with the bot are NOT saved.",
-            "Example: <Alice> : .seen Bob",
-            "         Bot     : Bob was last seen 0:21:09 ago "
-            "[2018-06-25 13:36:42 UTC], saying .help seen"
-        ]
+        self.manual = {
+            "desc": ("See when a user was last seen posting in a channel the"
+                     " bot has joined. If the user posted in channel other"
+                     " than the one the command was given from, then the bot"
+                     " will show that channel. Private messages with the bot"
+                     " are NOT saved."),
+            "bot_commands": {
+                "seen": {"usage": lambda x: f"{x}seen <nickname>"},
+                "info": ("Example: <Alice>: .seen Bob / <Bot>:"
+                         " Bob was last seen 0:21:09 ago"
+                         " [2018-06-25 13:36:42 UTC], saying .help seen")
+            }
+        }
 
 
 def update(channel, nick, msg, time, dbc):
