@@ -25,6 +25,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import random
 import sqlite3
 
+import requests
+
 from admin import is_allowed
 
 logo = "\x02quote\x0F"
@@ -137,18 +139,34 @@ def _search_by_id(channel, text, dbc):
 
 
 def listquotes(channel, nickname, dbc, irc):
+    data = ""
+
     sbn = _search_by_nick(channel, nickname, dbc, export_all=True)
     if sbn:
         for f in sbn:
-            m = f"{logo}: #{f[0]} | {f[2]} \x02-\x0F {f[3]} | Added by {f[4]}"
-            irc.privmsg(nickname, m)
+            m = f"#{f[0]} | {f[2]} - {f[3]} | Added by {f[4]}\n\n"
+            data += m
+
     rest = find(channel, nickname, dbc, export_all=True)
     if rest:
         for f in rest:
-            m = f"{logo}: #{f[0]} | {f[2]} \x02-\x0F {f[3]} | Added by {f[4]}"
-            irc.privmsg(nickname, m)
+            m = f"#{f[0]} | {f[2]} - {f[3]} | Added by {f[4]}\n\n"
+            data += m
+
     if not rest and not sbn:
-        irc.privmsg(nickname, f"{logo}: No results.")
+        irc.notice(nickname, f"{logo}: No results.")
+    else:
+        pomf_url = listquotes_pomf(data)
+        m = f"{logo}: Your quotes can be found here: {pomf_url}"
+        irc.notice(nickname, m)
+
+
+def listquotes_pomf(data):
+    url = "https://pomf.lain.la/upload.php"
+    files = {"files[]": ("quotes.txt", data, "text/plain")}
+    r = requests.post(url, files=files)
+    return r.json()["files"][0]["url"]
+
 
 
 def quote(channel, text, dbc):
