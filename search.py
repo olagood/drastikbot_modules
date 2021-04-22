@@ -55,6 +55,11 @@ class Module:
 opt_title_tag = True
 parser = 'html.parser'
 lang = "en-US"
+
+ua_chrome_90 = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                " (KHTML, like Gecko) Chrome/90.0.4430.85 Safari/537.36")
+
+
 # --------------------- #
 
 
@@ -80,168 +85,131 @@ def urlfix(url):
     return url
 
 
-# --- Search engine functions --- #
+# ====================================================================
+# Google
+# ====================================================================
+
 def google(query):
-    logo = '\x0302G\x0304o\x0308o\x0302g\x0309l\x0304e\x0F'
     search = f'https://www.google.com/search?q={query}'
-    r = requests.get(search, headers={"Accept-Language": lang}, timeout=10)
+    return "google", "This search engine is not supported yet."
+
+
+# ====================================================================
+# Bing
+# ====================================================================
+
+def bing(args):
+    query = urllib.parse.quote(args, safe="")
+    u = f"https://bing.com/search?q={query}"
+    h = headers={
+        "Accept-Language": lang,
+        "user-agent": ua_chrome_90,
+    }
+    r = requests.get(u, headers=h, timeout=10)
     soup = bs4.BeautifulSoup(r.text, parser)
-    err_str = (f'{logo}: \x0308Sorry, i could not find any results for:\x0F'
-               f' {url2str(query)}')
-    for s in soup.find_all('h3', {'class': ['r']}):
-        u = s.find('a').get('href')
-        u = urllib.parse.urlparse(u).query
-        try:
-            u = ''.join(urllib.parse.parse_qs(u)['q'][0].split())
-        except KeyError:
-            continue
-        u = urlfix(u)
-        if opt_title_tag:
-            title = url.get_title(u)
-            break
-        else:
-            title = ''
-            try:
-                requests.get(u, timeout=10)
-                break
-            except Exception:
-                pass
-    else:
-        return err_str
 
-    return f"{logo}: {u} | {title}"
+    results_l = soup.find_all("li", {"class": "b_algo"})
+    result = results_l[0].find("a").get("href")
+
+    return "bing", result
 
 
-def bing(query):
-    logo = '\x0315Bing\x0F'
-    search = f'https://www.bing.com/search?q={query}'
-    err_str = (f'{logo}: \x0308Sorry, i could not find any results for:\x0F'
-               f' {url2str(query)}')
-    r = requests.get(search, headers={"Accept-Language": lang}, timeout=10)
+# ====================================================================
+# Duckduckgo
+# ====================================================================
+
+def duckduckgo(args):
+    query = urllib.parse.quote(args, safe="")
+
+    if args[0] == '!':
+        return "duckduckgo", duckduckgo_bang(query)
+
+    return "duckduckgo", duckduckgo_search
+
+
+def duckduckgo_bang(query):
+    u = f"https://api.duckduckgo.com/?q={query}&format=json&no_redirect=1"
+    h = {
+        "Accept-Language": lang
+    }
+    r = requests.get(u, headers=h, timeout=10)
+    return r.json()["Redirect"]
+
+
+def duckduckgo_search(query):
+    u = ("https://html.duckduckgo.com/html/"
+         f"?q={query}&kl=wt-wt&kp=-2&kaf=1&kh=1&k1=-1&kd=-1")
+    h = {
+        "user-agent": ua_chrome_90,
+        "Accept-Language": lang
+    }
+    r = requests.get(u, headers=h, timeout=10)
     soup = bs4.BeautifulSoup(r.text, parser)
-    for s in soup.find_all('h2'):
-        u = urlfix(s.find('a').get('href'))
-        if opt_title_tag:
-            title = url.get_title(u)
-            break
-        else:
-            title = ''
-            try:
-                requests.get(u, timeout=10)
-                break
-            except Exception:
-                pass
-    else:
-        return err_str
-    return f"{logo}: {u} | {title}"
+
+    result = soup.find("a", {"class": ["result__url"]})
+    return result.get("href")
 
 
-def ddg(query, query_p):
-    logo = "\x0315DuckDuckGo\x0F"
-    if query_p[0] == '!':
-        search = (f'http://api.duckduckgo.com/?q={query}'
-                  '&format=json&no_redirect=1')
-        r = requests.get(search, headers={"Accept-Language": lang}, timeout=10)
-        data = json.loads(r.text)
-        u = urlfix(data["Redirect"])
-        return f"{logo}: {u}"
-    # If no bang is given, search and find a result
-    search = f'https://duckduckgo.com/html/?q={query}'
-    r = requests.get(search, headers={"user-agent": "w3m/0.52",
-                                      "Accept-Language": lang},
-                     timeout=10)
-    soup = bs4.BeautifulSoup(r.text, parser)
-    err_str = (f'{logo}: \x0308Sorry, i could not find any results for:\x0F'
-               f' {url2str(query)}')
-    rl = soup.find_all("div", class_="result results_links results_links_deep web-result ")
-    for s in [x.find('a', {'class': ['result__a']}) for x in rl]:
-        u = urllib.request.unquote(s.get('href')).replace("//duckduckgo.com/l/?uddg=", "", 1)
-        if u:
-            u = urlfix(u)
-        else:
-            return err_str
-        if opt_title_tag:
-            title = url.get_title(u)
-            break
-        else:
-            title = ''
-            try:
-                requests.get(u, timeout=10)
-                break
-            except Exception:
-                pass
-    else:
-        return err_str
-
-    return f"{logo}: {u} | {title}"
-
+# ====================================================================
+# Searx
+# ====================================================================
 
 def searx(query):
-    logo = "\x0315sear\x0311X\x0F"
-    err_str = (f'{logo}: \x0308Sorry, i could not find any results for:\x0F'
-               f' {url2str(query)}')
     search = f'https://searx.me/?q={query}'
-    r = requests.get(search, headers={"Accept-Language": lang}, timeout=10)
-    soup = bs4.BeautifulSoup(r.text, parser)
-    for a in soup.find_all('h4', {'class': ['result_header']}):
-        for s in a('a'):
-            u = urlfix(s.get('href'))
-            if opt_title_tag:
-                title = f"| {url.get_title(u)}"
-            else:
-                title = ''
-            if title:
-                br = True  # Break flag for the outer loop
-                break
-            else:
-                try:
-                    requests.get(u, timeout=10)
-                    br = True  # Break flag for the outer loop
-                    break
-                except Exception:
-                    pass
-        if br:
-            break
-    else:
-        return err_str
+    return "searx", "This search engine is not supported yet."
 
-    return f"{logo}: {u} {title}"
 
+# ====================================================================
+# Startpage
+# ====================================================================
 
 def startpage(query):
-    logo = "\x0304start\x0302page\x0F"
-    err_str = (f'{logo}: \x0308Sorry, i could not find any results for:\x0F'
-               f' {url2str(query)}')
     search = f'https://www.startpage.com/do/asearch?q={query}'
-    r = requests.get(search, headers={"Accept-Language": lang}, timeout=10)
-    soup = bs4.BeautifulSoup(r.text, parser)
-    for s in soup.find_all('a', {'id': ['title_1']}):
-        u = urlfix(s.get('href'))
-        if opt_title_tag:
-            title = f"| {url.get_title(u)}"
-            break
-        else:
-            title = ''
-            try:
-                requests.get(u, timeout=10)
-                break
-            except Exception:
-                pass
-    else:
-        return err_str
+    return "searx", "This search engine is not supported yet."
 
-    return f"{logo}: {u} {title}"
+
+# ====================================================================
+# Main
+# ====================================================================
+
+dispatch = {
+    "g": google,
+    "bing": bing,
+    "ddg": duckduckgo,
+    "searx": searx,
+    "sp": startpage
+}
+
+logo_d = {
+    "google": "\x0302G\x0304o\x0308o\x0302g\x0309l\x0304e\x0F",
+    "bing": "\x0315Bing\x0F",
+    "duckduckgo": "\x0315DuckDuckGo\x0F",
+    "searx": "\x0315sear\x0311X\x0F",
+    "startpage": "\x0304start\x0302page\x0F"
+}
+
+# err = f'{logo}: \x0308Sorry, i could not find any results for:\x0F {query}'
 
 
 def main(i, irc):
-    query = urllib.parse.quote_plus(i.msg_nocmd)
-    if i.cmd == 'g':
-        irc.privmsg(i.channel, google(query))
-    elif i.cmd == 'bing':
-        irc.privmsg(i.channel, bing(query))
-    elif i.cmd == 'ddg':
-        irc.privmsg(i.channel, ddg(query, i.msg_nocmd))
-    elif i.cmd == 'searx':
-        irc.privmsg(i.channel, searx(query))
-    elif i.cmd == 'sp':
-        irc.privmsg(i.channel, startpage(query))
+    args = i.msg_nocmd
+    botcmd = i.cmd
+    receiver = i.channel
+
+    engine, result = dispatch[botcmd](args)
+
+    title = None
+    if opt_title_tag:
+        title = url.get_title(result)
+
+    logo = logo_d[engine]
+
+    if title:
+        m = f"{logo}: {result} | < title: {title}"
+    else:
+        m = f"{logo}: {result}"
+
+    # Truncate the output just in case. We can't send 512 bytes anyway.
+    m = m[:512]
+
+    irc.notice(receiver, m)
