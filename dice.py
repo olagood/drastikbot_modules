@@ -49,6 +49,11 @@ def main(i, irc):
 
     n_dice = int(values[0])
     n_sides = int(values[1])
+
+    if n_dice > 1000 or n_sides > 1000:
+        irc.notice(i.channel, f"{i.nickname}: Too many dice or sides given.")
+        return
+
     results = [random.randint(1, n_sides) for i in range(n_dice)]
 
     limit = 15  # ToDo: Let chanops choose the limit
