@@ -124,7 +124,7 @@ def duckduckgo(args):
     if args[0] == '!':
         return "duckduckgo", duckduckgo_bang(query)
 
-    return "duckduckgo", duckduckgo_search
+    return "duckduckgo", duckduckgo_search(query)
 
 
 def duckduckgo_bang(query):
@@ -165,7 +165,7 @@ def searx(query):
 
 def startpage(query):
     search = f'https://www.startpage.com/do/asearch?q={query}'
-    return "searx", "This search engine is not supported yet."
+    return "startpage", "This search engine is not supported yet."
 
 
 # ====================================================================
