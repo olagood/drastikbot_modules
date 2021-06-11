@@ -1,19 +1,20 @@
-#!/usr/bin/env python3
 # coding=utf-8
 
 # Lainstream for Drastikbot
 #
 # Update and get information about lainchan radio and video streams.
 #
-# Depends:
-#   - requests      :: $ pip3 install requests
+# Depends
+# -------
+# pip: requests
 
 # © 2018-2021 All Rights Reserved olagood (drastik) <derezzed@protonmail.com>
 
 import pickle
 import xml.etree.ElementTree as ET
-# from bs4 import BeautifulSoup
+
 import requests
+# from bs4 import BeautifulSoup
 
 
 lainchan_org_logo = "\x0304Lainstream\x0F"
@@ -24,86 +25,85 @@ lain_la_logo = "lain.la"
 
 
 class Module:
-    def __init__(self):
-        self.commands = ["stream",
-                         "radio",
-                         # lainchan.org
-                         "streamset", "streamset-rtmp", "streamset-ogv",
-                         "streamerset", "streamerset-rtmp", "streamerset-ogv",
-                         "streamunset", "streamunset-rtmp", "streamunset-ogv",
-                         "streamurls",
-                         # lain.la
-                         "streamset-la", "streamerset-la", "streamunset-la"]
-        self.manual = {
-            "desc": "Stream and radio information for lainchan.org.",
-            "bot_commands": {
-                "stream": {"usage": lambda x: f"{x}stream",
-                           "info": "Display the currently active streams."},
-                "radio": {"usage": lambda x: f"{x}radio",
-                          "info": "Station information for lainchan radio."},
-                "streamset": {
-                    "usage": lambda x: f"{x}streamset [title]",
-                    "info": ("Set the stream title for lainchan's RTMP"
-                             " stream. The streamer is also set to the"
-                             " nickname of the caller. If no title is"
-                             " provided, it unsets the stream."),
-                    "alias": ["streamset-rtmp"]},
-                "streamset-rtmp": {
-                    "usage": lambda x: f"{x}streamset-rtmp [title]",
-                    "info": ("Set the stream title for lainchan's RTMP"
-                             " stream. The streamer is also set to the"
-                             " nickname of the caller. If no title is"
-                             " provided, it unsets the stream."),
-                    "alias": ["streamset"]},
-                "streamset-ogv": {
-                    "usage": lambda x: f"{x}streamset-ogv [title]",
-                    "info": ("Set the stream title for lainchan's OGV"
-                             " stream. The streamer is also set to the"
-                             " nickname of the caller. If no title is"
-                             " provided, it unsets the stream.")},
-                "streamerset": {
-                    "usage": lambda x: f"{x}streamerset <name>",
-                    "info": "Set the streamer for lainchan's RTMP stream",
-                    "alias": ["streamerset-rtmp"]},
-                "streamerset-rtmp": {
-                    "usage": lambda x: f"{x}streamerset-rtmp <name>",
-                    "info": "Set the streamer for lainchan's RTMP stream",
-                    "alias": ["streamerset"]},
-                "streamerset-ogv": {
-                    "usage": lambda x: f"{x}streamerset-ogv <name>",
-                    "info": "Set the streamer for lainchan's OGV stream"},
-                "streamunset": {
-                    "usage": lambda x: f"{x}streamunset",
-                    "info": ("Unset the title and the streamer for lainchan's"
-                             " RTMP stream."),
-                    "alias": ["streamunset-rtmp"]},
-                "streamunset-rtmp": {
-                    "usage": lambda x: f"{x}streamunset-rtmp",
-                    "info": ("Unset the title and the streamer for lainchan's"
-                             " RTMP stream."),
-                    "alias": ["streamunset"]},
-                "streamunset-ogv": {
-                    "usage": lambda x: f"{x}streamunset-ogv",
-                    "info": ("Unset the title and the streamer for lainchan's"
-                             " OGV stream.")},
-                "streamurls": {
-                    "usage": lambda x: f"{x}streamurls",
-                    "info": "Show lainchan's RTMP, HLS and OGV stream urls."},
-                "streamset-la": {
-                    "usage": lambda x: f"{x}streamset-la [title]",
-                    "info": ("Set the stream title for the lain.la"
-                             " stream. The streamer is also set to the"
-                             " nickname of the caller. If no title is"
-                             " provided, it unsets the stream.")},
-                "streamerset-la": {
-                    "usage": lambda x: f"{x}streamerset <name>",
-                    "info": "Set the streamer for lain.la's stream"},
-                "streamunset-la": {
-                    "usage": lambda x: f"{x}streamunset-la",
-                    "info": ("Unset the title and the streamer for lain.la's"
-                             " stream.")}
-            }
+    bot_commands = ["stream",
+                    "radio",
+                    # lainchan.org
+                    "streamset", "streamset-rtmp", "streamset-ogv",
+                    "streamerset", "streamerset-rtmp", "streamerset-ogv",
+                    "streamunset", "streamunset-rtmp", "streamunset-ogv",
+                    "streamurls",
+                    # lain.la
+                    "streamset-la", "streamerset-la", "streamunset-la"]
+    manual = {
+        "desc": "Stream and radio information for lainchan.org.",
+        "bot_commands": {
+            "stream": {"usage": lambda x: f"{x}stream",
+                       "info": "Display the currently active streams."},
+            "radio": {"usage": lambda x: f"{x}radio",
+                      "info": "Station information for lainchan radio."},
+            "streamset": {
+                "usage": lambda x: f"{x}streamset [title]",
+                "info": ("Set the stream title for lainchan's RTMP"
+                         " stream. The streamer is also set to the"
+                         " nickname of the caller. If no title is"
+                         " provided, it unsets the stream."),
+                "alias": ["streamset-rtmp"]},
+            "streamset-rtmp": {
+                "usage": lambda x: f"{x}streamset-rtmp [title]",
+                "info": ("Set the stream title for lainchan's RTMP"
+                         " stream. The streamer is also set to the"
+                         " nickname of the caller. If no title is"
+                         " provided, it unsets the stream."),
+                "alias": ["streamset"]},
+            "streamset-ogv": {
+                "usage": lambda x: f"{x}streamset-ogv [title]",
+                "info": ("Set the stream title for lainchan's OGV"
+                         " stream. The streamer is also set to the"
+                         " nickname of the caller. If no title is"
+                         " provided, it unsets the stream.")},
+            "streamerset": {
+                "usage": lambda x: f"{x}streamerset <name>",
+                "info": "Set the streamer for lainchan's RTMP stream",
+                "alias": ["streamerset-rtmp"]},
+            "streamerset-rtmp": {
+                "usage": lambda x: f"{x}streamerset-rtmp <name>",
+                "info": "Set the streamer for lainchan's RTMP stream",
+                "alias": ["streamerset"]},
+            "streamerset-ogv": {
+                "usage": lambda x: f"{x}streamerset-ogv <name>",
+                "info": "Set the streamer for lainchan's OGV stream"},
+            "streamunset": {
+                "usage": lambda x: f"{x}streamunset",
+                "info": ("Unset the title and the streamer for lainchan's"
+                         " RTMP stream."),
+                "alias": ["streamunset-rtmp"]},
+            "streamunset-rtmp": {
+                "usage": lambda x: f"{x}streamunset-rtmp",
+                "info": ("Unset the title and the streamer for lainchan's"
+                         " RTMP stream."),
+                "alias": ["streamunset"]},
+            "streamunset-ogv": {
+                "usage": lambda x: f"{x}streamunset-ogv",
+                "info": ("Unset the title and the streamer for lainchan's"
+                         " OGV stream.")},
+            "streamurls": {
+                "usage": lambda x: f"{x}streamurls",
+                "info": "Show lainchan's RTMP, HLS and OGV stream urls."},
+            "streamset-la": {
+                "usage": lambda x: f"{x}streamset-la [title]",
+                "info": ("Set the stream title for the lain.la"
+                         " stream. The streamer is also set to the"
+                         " nickname of the caller. If no title is"
+                         " provided, it unsets the stream.")},
+            "streamerset-la": {
+                "usage": lambda x: f"{x}streamerset <name>",
+                "info": "Set the streamer for lain.la's stream"},
+            "streamunset-la": {
+                "usage": lambda x: f"{x}streamunset-la",
+                "info": ("Unset the title and the streamer for lain.la's"
+                         " stream.")}
         }
+    }
 
 
 # ====================================================================
@@ -111,31 +111,31 @@ class Module:
 # ====================================================================
 
 def arisu_streamerset_rtmp(irc, streamer):
-    irc.privmsg("Arisu", f"!streamerset {streamer}")
+    irc.out.privmsg("Arisu", f"!streamerset {streamer}")
 
 
 def arisu_streamset_rtmp(irc, title, streamer):
-    irc.privmsg("Arisu", f"!streamset {title}")
-    irc.privmsg("Arisu", f"!streamerset {streamer}")
+    irc.out.privmsg("Arisu", f"!streamset {title}")
+    irc.out.privmsg("Arisu", f"!streamerset {streamer}")
 
 
 def arisu_streamunset_rtmp(irc):
-    irc.privmsg("Arisu", "!streamunset")
-    irc.privmsg("Arisu", "!streamerunset")
+    irc.out.privmsg("Arisu", "!streamunset")
+    irc.out.privmsg("Arisu", "!streamerunset")
 
 
 def arisu_streamerset_ogv(irc, streamer):
-    irc.privmsg("Arisu", f"!streamerset --ogv {streamer}")
+    irc.out.privmsg("Arisu", f"!streamerset --ogv {streamer}")
 
 
 def arisu_streamset_ogv(irc, title, streamer):
-    irc.privmsg("Arisu", f"!streamset --ogv {title}")
-    irc.privmsg("Arisu", f"!streamerset --ogv {streamer}")
+    irc.out.privmsg("Arisu", f"!streamset --ogv {title}")
+    irc.out.privmsg("Arisu", f"!streamerset --ogv {streamer}")
 
 
 def arisu_streamunset_ogv(irc):
-    irc.privmsg("Arisu", "!streamunset --ogv")
-    irc.privmsg("Arisu", "!streamerunset --ogv")
+    irc.out.privmsg("Arisu", "!streamunset --ogv")
+    irc.out.privmsg("Arisu", "!streamerunset --ogv")
 
 
 # ====================================================================
@@ -145,6 +145,8 @@ def arisu_streamunset_ogv(irc):
 # IRC callbacks
 
 def radio(state, i, irc):
+    msgtarget = i.msg.get_msgtarget()
+
     m = "\x0306Lainchan Radio\x0F: "
     urls = ("https://lainon.life/playlist/cyberia.json",
             "https://lainon.life/playlist/cafe.json",
@@ -160,7 +162,7 @@ def radio(state, i, irc):
         listeners = j['listeners']['current']
         m += (f"\x0305{channel} {listeners}\x0F:"
               f" \x0302{c_artist} - {c_title}\x0F | https://lainon.life/")
-    irc.privmsg(i.channel, m)
+    irc.out.notice(msgtarget, m)
 
 
 # ====================================================================
@@ -224,102 +226,120 @@ def lainchan_org_ogv_set(state, title, streamer):
 # IRC callbacks
 
 def lainchan_org_stream_unset_rtmp(state, i, irc):
+    msgtarget = i.msg.get_msgtarget()
+
     state = lainchan_org_rtmp_set(state, "", "")
     m = f"{lainchan_org_logo_rtmp}: Stream information was unset!"
-    irc.privmsg(i.channel, m)
+    irc.out.notice(msgtarget, m)
     arisu_streamunset_rtmp(irc)
     return state
 
 
 def lainchan_org_stream_set_rtmp(state, i, irc):
-    streamer = i.nickname
-    title = i.msg_nocmd
+    msgtarget = i.msg.get_msgtarget()
+
+    streamer = i.msg.get_nickname()
+    title = i.msg.get_args()
 
     if not title:
         return lainchan_org_stream_unset_rtmp(state, i, irc)
 
     state = lainchan_org_rtmp_set(state, title, streamer)
     m = f"{lainchan_org_logo_rtmp}: Stream information updated!"
-    irc.privmsg(i.channel, m)
+    irc.out.notice(msgtarget, m)
     arisu_streamset_rtmp(irc, title, streamer)
     return state
 
 
 def lainchan_org_streamer_set_rtmp(state, i, irc):
-    streamer = i.msg_nocmd
+    msgtarget = i.msg.get_msgtarget()
+    botcmd = i.msg.get_botcmd()
+    prefix = i.msg.get_botcmd_prefix()
+
+    streamer = i.msg.get_args()
     title = state["lainchan.org"]["rtmp"]["title"]
 
     if not streamer:
         m = (f"{lainchan_org_logo_rtmp}: Usage: "
-             f"{i.cmd_prefix}{i.cmd} <streamer>")
-        irc.privmsg(i.channel, m)
+             f"{prefix}{botcmd} <streamer>")
+        irc.out.notice(msgtarget, m)
         return
 
     if not title:
         m = (f"{lainchan_org_logo_rtmp}: Set a title using "
-             f"`{i.cmd_prefix}{i.cmd}' first.")
-        irc.privmsg(i.channel, m)
+             f"`{prefix}streamset-rtmp' first.")
+        irc.out.notice(msgtarget, m)
         return
 
     state = lainchan_org_rtmp_set(state, title, streamer)
     m = f"{lainchan_org_logo_rtmp}: Streamer updated!"
-    irc.privmsg(i.channel, m)
+    irc.out.notice(msgtarget, m)
     arisu_streamerset_rtmp(irc, streamer)
     return state
 
 
 def lainchan_org_stream_unset_ogv(state, i, irc):
+    msgtarget = i.msg.get_msgtarget()
+
     state = lainchan_org_ogv_set(state, "", "")
     m = f"{lainchan_org_logo_ogv}: Stream information was unset!"
-    irc.privmsg(i.channel, m)
+    irc.out.notice(msgtarget, m)
     arisu_streamunset_ogv(irc)
     return state
 
 
 def lainchan_org_stream_set_ogv(state, i, irc):
-    streamer = i.nickname
-    title = i.msg_nocmd
+    msgtarget = i.msg.get_msgtarget()
+
+    streamer = i.msg.get_nickname()
+    title = i.msg.get_args()
 
     if not title:
         return lainchan_org_stream_unset_ogv(state, i, irc)
 
     state = lainchan_org_ogv_set(state, title, streamer)
     m = f"{lainchan_org_logo_ogv}: Stream information updated!"
-    irc.privmsg(i.channel, m)
+    irc.out.notice(msgtarget, m)
     arisu_streamset_ogv(irc, title, streamer)
     return state
 
 
 def lainchan_org_streamer_set_ogv(state, i, irc):
-    streamer = i.msg_nocmd
+    msgtarget = i.msg.get_msgtarget()
+    botcmd = i.msg.get_botcmd()
+    prefix = i.msg.get_botcmd_prefix()
+
+    streamer = i.msg.get_args()
     title = state["lainchan.org"]["ogv"]["title"]
 
     if not streamer:
         m = (f"{lainchan_org_logo_ogv}: Usage: "
-             f"{i.cmd_prefix}{i.cmd} <streamer>")
-        irc.privmsg(i.channel, m)
+             f"{prefix}{botcmd} <streamer>")
+        irc.out.notice(msgtarget, m)
         return
 
     if not title:
         m = (f"{lainchan_org_logo_ogv}: Set a title using "
-             f"`{i.cmd_prefix}{i.cmd}' first.")
-        irc.privmsg(i.channel, m)
+             f"`{prefix}streamset-ogv' first.")
+        irc.out.notice(msgtarget, m)
         return
 
     state = lainchan_org_ogv_set(state, title, streamer)
     m = f"{lainchan_org_logo_ogv}: Streamer updated!"
-    irc.privmsg(i.channel, m)
+    irc.out.notice(msgtarget, m)
     arisu_streamerset_ogv(irc, streamer)
     return state
 
 
 def lainchan_org_stream_urls(state, i, irc):
+    msgtarget = i.msg.get_msgtarget()
+
     rtmp = state["lainchan.org"]["rtmp"]["url"]
     hls = state["lainchan.org"]["rtmp"]["url-hls"]
     ogv = state["lainchan.org"]["ogv"]["url"]
     m = (f"{lainchan_org_logo_rtmp}: {rtmp} / {hls}"
          f" | {lainchan_org_logo_ogv}: {ogv}")
-    irc.privmsg(i.channel, m)
+    irc.out.notice(msgtarget, m)
 
 
 # ====================================================================
@@ -349,44 +369,52 @@ def lain_la_set(state, title, streamer):
 # IRC callbacks
 
 def lain_la_stream_unset(state, i, irc):
+    msgtarget = i.msg.get_msgtarget()
+
     state = lain_la_set(state, "", "")
     m = f"{lain_la_logo}: Stream information was unset!"
-    irc.privmsg(i.channel, m)
+    irc.out.notice(msgtarget, m)
     return state
 
 
 def lain_la_stream_set(state, i, irc):
-    streamer = i.nickname
-    title = i.msg_nocmd
+    msgtarget = i.msg.get_msgtarget()
+
+    streamer = i.msg.get_nickname()
+    title = i.msg.get_args()
 
     if not title:
         return lain_la_stream_unset(state, i, irc)
 
     state = lain_la_set(state, title, streamer)
     m = f"{lain_la_logo}: Stream information updated!"
-    irc.privmsg(i.channel, m)
+    irc.out.notice(msgtarget, m)
     return state
 
 
 def lain_la_streamer_set(state, i, irc):
-    streamer = i.msg_nocmd
+    msgtarget = i.msg.get_msgtarget()
+    botcmd = i.msg.get_botcmd()
+    prefix = i.msg.get_botcmd_prefix()
+
+    streamer = i.msg.get_args()
     title = state["lain.la"]["title"]
 
     if not streamer:
         m = (f"{lain_la_logo}: Usage: "
-             f"{i.cmd_prefix}{i.cmd} <streamer>")
-        irc.privmsg(i.channel, m)
+             f"{prefix}{botcmd} <streamer>")
+        irc.out.notice(msgtarget, m)
         return
 
     if not title:
         m = (f"{lain_la_logo}: Set a title using "
-             f"`{i.cmd_prefix}{i.cmd}' first.")
-        irc.privmsg(i.channel, m)
+             f"`{prefix}streamset-la' first.")
+        irc.out.notice(msgtarget, m)
         return
 
     state = lain_la_set(state, title, streamer)
     m = f"{lain_la_logo}: Streamer updated!"
-    irc.privmsg(i.channel, m)
+    irc.out.notice(msgtarget, m)
     return state
 
 
@@ -395,6 +423,8 @@ def lain_la_streamer_set(state, i, irc):
 # ====================================================================
 
 def stream(state, i, irc):
+    msgtarget = i.msg.get_msgtarget()
+
     stream_status_list = [
         lainchan_org_rtmp_status(state),
         lainchan_org_ogv_status(state),
@@ -405,13 +435,12 @@ def stream(state, i, irc):
         m = (f"{lainchan_org_logo}: Nothing is streaming right now."
              " Learn how you can stream at: "
              "https://lainchan.org/stream.html ")
-        irc.privmsg(i.channel, m)
-
+        irc.out.notice(msgtarget, m)
         return
 
     for s in stream_status_list:
         if s:
-            irc.privmsg(i.channel, s)
+            irc.out.notice(msgtarget, s)
 
 
 def stream_how(state, i, irc):
@@ -445,6 +474,11 @@ callbacks = {
 
 
 def main(i, irc):
+    botcmd = i.msg.get_botcmd()
+
+    db = i.db_disk
+    dbc = db.cursor()
+
     state = {
         "lainchan.org": {
             "url": "https://lainchan.org/stream.html",
@@ -468,8 +502,6 @@ def main(i, irc):
         }
     }
 
-    db = i.db[1]
-    dbc = db.cursor()
     try:
         dbc.execute('''SELECT value FROM stream;''')
         fetch = dbc.fetchone()
@@ -477,12 +509,13 @@ def main(i, irc):
     except Exception:
         dbc.execute('''CREATE TABLE IF NOT EXISTS stream (value BLOB);''')
 
-    callbacks[i.cmd](state, i, irc)
+    callbacks[botcmd](state, i, irc)
 
     v = pickle.dumps(state)
     try:
         dbc.execute('''INSERT INTO stream (value) VALUES (?);''', (v,))
     except Exception:
         pass
+
     dbc.execute('''UPDATE stream SET value = ?''', (v,))
     db.commit()
