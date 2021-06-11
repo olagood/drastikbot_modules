@@ -29,10 +29,11 @@ import urllib.parse
 import requests
 import bs4
 
+from irc.message import remove_formatting
+
 
 class Module:
-    def __init__(self):
-        self.auto = True
+    irc_commands = ["PRIVMSG"]
 
 
 # ----- Constants ----- #
@@ -42,28 +43,6 @@ accept_lang = "en-US"
 nsfw_tag = "\x0304[NSFW]\x0F"
 data_limit = 69120
 # --------------------- #
-
-
-def remove_formatting(msg):
-    '''Remove IRC String formatting codes'''
-    # - Regex -
-    # Capture "x03N,M". Should be the first called:
-    # (\\x03[0-9]{0,2},{1}[0-9]{1,2})
-    # Capture "x03N". Catch all color codes.
-    # (\\x03[0-9]{0,2})
-    # Capture the other formatting codes
-    line = re.sub(r'(\\x03[0-9]{0,2},{1}[0-9]{1,2})', '', msg)
-    line = re.sub(r'(\\x03[0-9]{1,2})', '', line)
-    line = line.replace("\\x03", "")
-    line = line.replace("\\x02", "")
-    line = line.replace("\\x1d", "")
-    line = line.replace("\\x1D", "")
-    line = line.replace("\\x1f", "")
-    line = line.replace("\\x1F", "")
-    line = line.replace("\\x16", "")
-    line = line.replace("\\x0f", "")
-    line = line.replace("\\x0F", "")
-    return line
 
 
 def convert_size(size_bytes):
@@ -78,17 +57,6 @@ def convert_size(size_bytes):
     return "%s %s" % (s, size_name[i])
 
 
-def get_url(msg):
-    '''Search a string for urls and return a list of them.'''
-    str_l = msg.split()
-    req_l = ["http://", "https://"]  # add "." for parse urls without a scheme
-    urls = [u for u in str_l if any(r in u for r in req_l)]
-    # Avoid parsing IPv4s that are not complete (IPs like: 1.1):
-    # Useful when a scheme is not required to parse a URL.
-    # urls = [u for u in urls if u.count('.') == 3 or u.upper().isupper()]
-    return urls
-
-
 def default_parser(u):
     '''
     Visit each url and check if there is html content
@@ -96,36 +64,43 @@ def default_parser(u):
     tag. If there is not try to read the http headers
     to find 'content-type' and 'content-length'.
     '''
-    data = ""
-    output = ""
+
+    h = {
+        "user-agent": user_agent,
+        "Accept-Language": accept_lang
+    }
+
     try:
-        r = requests.get(u, stream=True,
-                         headers={"user-agent": user_agent,
-                                  "Accept-Language": accept_lang},
-                         timeout=5)
+        r = requests.get(u, stream=True, headers=h, timeout=5)
     except Exception:
-        return False
-    for i in r.iter_content(chunk_size=512, decode_unicode=False):
-        data += i.decode('utf-8', errors='ignore')
-        if len(data) > data_limit or '</head>' in data.lower():
+        return "", False
+
+    data = b""
+    for i in r.iter_content(chunk_size=2048, decode_unicode=False):
+        data += i
+        if len(data) > data_limit:
             break
+
     r.close()
+
+    data = data.decode('utf-8', errors='ignore')
     soup = bs4.BeautifulSoup(data, parser)
+    output = ""
+
     try:
         output += soup.head.title.text.strip()
     except Exception:
         try:
             output += r.headers['content-type']
+            output += ", "
         except KeyError:
             pass
         try:
             h_length = convert_size(float(r.headers['content-length']))
-            if output:
-                output += f", Size: {h_length}"
-            else:
-                output += h_length
+            output += f"Size: {h_length}"
         except KeyError:
             pass
+
     try:
         if "RTA-5042-1996-1400-1577-RTA" in data:
             output = f"{nsfw_tag} {output}"
@@ -133,6 +108,7 @@ def default_parser(u):
             output = f"{nsfw_tag} {output}"
     except KeyError:
         pass
+
     return output, data
 
 
@@ -279,10 +255,10 @@ hosts_d = {
 
 def _get_title_from_host(u):
     host = urllib.parse.urlparse(u).hostname
-    if host[:4] == "www.":
+    if host.startswith("www."):
         host = host[4:]
     if host not in hosts_d:
-        return default_parser(u)  # It's a tuple
+        return default_parser(u)  # Return tuple
     else:
         return hosts_d[host](u), False
 
@@ -329,27 +305,32 @@ def get_title(u):
 
 
 def main(i, irc):
+    # OLD METHOD FOR CLEANING UP THE STRING
+    # -------------------------------------
     # - Raw undecoded message clean up.
     # Remove /r/n and whitespace
-    msg = i.msg_raw.strip()
+    #msg = i.msg_raw.strip()
     # Convert the bytes to a string,
     # split the irc commands from the text message,
     # remove ' character from the end of the string.
-    msg = str(msg).split(' :', 1)[1][:-1]
+    #msg = str(msg).split(' :', 1)[1][:-1]
     # Remove all IRC formatting codes
-    msg = remove_formatting(msg)
+    #msg = remove_formatting(msg)
     # msg = info[2]
 
-    urls = get_url(msg)
+    msgtarget = i.msg.get_msgtarget()
+    text = i.msg.get_text()
+    text = remove_formatting(text)
+
     prev_u = set()  # Already visited URLs, used to avoid spamming.
-    for u in urls:
-        if not (u.startswith('http://') or u.startswith('https://')):
-            u = f'http://{u}'
+
+    for u in filter(lambda x: x.startswith("http"), text.split()):
         if u in prev_u:
-            return
+            continue
+
         title = get_title(u)
         if not title:
             continue
 
-        irc.privmsg(i.channel, title)
+        irc.out.notice(msgtarget, title)
         prev_u.add(u)
