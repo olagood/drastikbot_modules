@@ -19,7 +19,8 @@
 # ---
 # To  provide help  messages through  this module  other modules  must
 # include  the manual  variable  in  their Module  class.  If no  such
-# variable is provided the module will be unlisted.
+# variable is provided or if there is no Module class the  module will
+# be unlisted.
 
 
 # Copyright (C) 2021 drastik.org
@@ -28,7 +29,7 @@
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, version 3 only.
+# by the Free Software Foundation, version 3.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -39,86 +40,84 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-import itertools
+from irc.modules import get_object_from_name
 
 
 class Module:
-    def __init__(self):
-        self.commands = ["help"]
+    bot_commands = ["help"]
 
 
-def get_module_object(i, module_name):
-    # drastikbot v2.2
-    if hasattr(i, "mod"):
-        for mod_object, mod_path in i.mod["modules_d"].values():
-            if mod_path.stem == module_name:
-                return mod_object
+# ====================================================================
+# Module checks
+# ====================================================================
 
-    # drastikbot v2.1
-    if hasattr(i, "modules") and module_name in i.modules:
-        return i.modules[module_name]
-
-    return None
-
-
-def hidden_status(i, module_name: str) -> bool:
+def is_hidden(module_object):
     """Is ``module'' a hidden module?"""
-
-    module_object = get_module_object(i, module_name)
-    if module_object is None:
-        return True  # Module not found
-
-    if not hasattr(module_object, "Module"):
-        return True  # No Module class, it's hidden
-
-    if hasattr(module_object.Module(), "manual"):
-        return module_object.Module().manual
-    elif hasattr(module_object.Module(), "helpmsg"):  # Old method
-        if "__hidden__" in  module_object.Module().helpmsg:
-            return "hidden"
+    try:
+        return module_object.Module.manual == "hidden"
+    except AttributeError:
+        # No module class
+        # No manual entry
+        return True
 
 
-def is_hidden(i, module_name):
-    return hidden_status(i, module_name) == "hidden"
+def is_allowed(i, module_object):
+    msgtarget = i.msg.get_msgtarget()
+    name = i.bot["modules"]["modules_d"][module_object].stem
+    conf = i.bot["conf"]
+
+    return not is_hidden(module_object)\
+        and not conf.has_channel_module_blacklist(name, msgtarget) \
+        and not conf.has_channel_module_whitelist(name, msgtarget)
 
 
-def module_checks(i, irc, module):
-    if module not in i.modules.keys():
-        irc.notice(i.channel, f"Help: `{module}' is not an imported module.")
+def check_then_get_module_class(i, irc, module_name):
+    msgtarget = i.msg.get_msgtarget()
+
+    modules = i.bot["modules"]
+    conf = i.bot["conf"]
+
+    try:
+        module_c = get_object_from_name(modules, module_name).Module
+    except AttributeError:
+        m = f"Help: `{module_name}' has not been loaded."
+        irc.out.notice(msgtarget, m)
         return False
 
-    try:
-        module_bl = irc.var.modules_obj["blacklist"][module]
-        if module_bl and i.channel in module_bl:
-            irc.notice(i.channel, f"Help: This module has been disabled.")
-            return False
-    except KeyError:
-        pass  # No blacklist, move on
+    if conf.has_channel_module_blacklist(module_name, msgtarget):
+        m = "Help: This module has been disabled."
+        irc.out.notice(msgtarget, m)
+        return False
 
-    try:
-        module_wl = irc.var.modules_obj["whitelist"][module]
-        if module_wl and i.channel not in module_wl:
-            irc.notice(i.channel, f"Help: This module has been disabled.")
-            return False
-    except KeyError:
-        pass  # No whitelist, move on
+    if conf.has_channel_module_whitelist(module_name, msgtarget):
+        m = "Help: This module has been disabled."
+        irc.out.notice(msgtarget, m)
+        return False
 
-    module_c = i.modules[module].Module()
     if not hasattr(module_c, "manual"):
-        irc.notice(i.channel, "Help: This module does not have a manual.")
+        m = "Help: This module does not have a manual."
+        irc.out.notice(msgtarget, m)
         return False
 
-    return True
+    return module_c
 
-def module_help(i, irc, module):
-    if not module_checks(i, irc, module):
+
+# ====================================================================
+# Help functions
+# ====================================================================
+
+def module_help(i, irc, module_name):
+    msgtarget = i.msg.get_msgtarget()
+    prefix = i.msg.get_botcmd_prefix()
+
+    module_c = check_then_get_module_class(i, irc, module_name)
+
+    if not module_c:
         return
 
-    module_c = i.modules[module].Module()
-
     commands = ""
-    if hasattr(module_c, "commands"):
-        commands = ", ".join(module_c.commands)
+    if hasattr(module_c, "bot_commands"):
+        commands = ", ".join(module_c.bot_commands)
         commands = f"Commands: {commands} | "
 
     info = ""
@@ -126,29 +125,36 @@ def module_help(i, irc, module):
         info = module_c.manual["desc"]
         info = f"Info: {info}"
 
-    t = f"\x0311{module}\x0F: {commands}{info}"
-    t += f" | Use: {i.cmd_prefix}help <module> <command> for command info."
-    irc.notice(i.channel, t)
+    t = f"\x0311{module_name}\x0F: {commands}{info}"
+    t += f" | Use: {prefix}help <module> <command> for command info."
+
+    irc.out.notice(msgtarget, t)
 
 
-def command_help(i, irc, module, command):
-    if not module_checks(i, irc, module):
+def command_help(i, irc, module_name, command):
+    msgtarget = i.msg.get_msgtarget()
+    prefix = i.msg.get_botcmd_prefix()
+
+    module_c = check_then_get_module_class(i, irc, module_name)
+
+    if not module_c:
         return
 
-    module_c = i.modules[module].Module()
-
-    if not hasattr(module_c, "commands"):
-        irc.notice(i.channel, "Help: This module does not provide commands.")
+    if not hasattr(module_c, "bot_commands"):
+        m = "Help: This module does not provide commands."
+        irc.out.notice(msgtarget, m)
         return
 
     if "bot_commands" not in module_c.manual:
-        irc.notice(i.channel, "Help: No manual entry for this command ")
+        m = "Help: No manual entry for this command."
+        irc.out.notice(msgtarget, m)
         return
 
     command_manual = module_c.manual["bot_commands"]
 
     if command not in command_manual:
-        irc.notice(i.channel, "Help: No manual entry for this command.")
+        m = "Help: No manual entry for this command."
+        irc.out.notice(msgtarget, m)
         return
 
     command_entry = command_manual[command]
@@ -156,7 +162,7 @@ def command_help(i, irc, module, command):
     t = []
 
     if "usage" in command_entry:
-        usage = command_entry["usage"](i.cmd_prefix)
+        usage = command_entry["usage"](prefix)
         usage = f"Usage: {usage}"
         t.append(usage)
 
@@ -172,32 +178,44 @@ def command_help(i, irc, module, command):
 
     t = " | ".join(t)
     t = f"{command}: {t}"
-    irc.notice(i.channel, t)
+
+    irc.out.notice(msgtarget, t)
 
 
 def module_list(i, irc):
-    m1 = filter(lambda x: not is_hidden(i, x) and i.whitelist(x, i.channel) \
-                          and not i.blacklist(x, i.channel),
-               set(i.command_dict.values()))
-    m2 = filter(lambda x: not is_hidden(i, x) and i.whitelist(x, i.channel) \
-                          and not i.blacklist(x, i.channel) and not x in m1,
-               i.auto_list)
-    m = itertools.chain(m1, m2)
-    t = "Help: " + ", ".join(sorted(m))
-    t += f" | Use: {i.cmd_prefix}help <module> for module info."
-    irc.notice(i.channel, t)
+    msgtarget = i.msg.get_msgtarget()
+    prefix = i.msg.get_botcmd_prefix()
 
+    s = i.bot["modules"]
+
+    m = filter(lambda x: is_allowed(i, x), s["modules_d"].keys())
+    m = map(lambda x: s["modules_d"][x].stem, m)
+
+    m = "Help: " + ", ".join(sorted(m))
+    m += f" | Use: {prefix}help <module> for module info."
+
+    irc.out.notice(msgtarget, m)
+
+
+# ====================================================================
+# Main
+# ====================================================================
 
 def main(i, irc):
-    if i.msg_nocmd:
-        argv = i.msg_nocmd.split()
-        argc = len(argv)
-        if argc == 1:
-            module_help(i, irc, argv[0])
-        elif argc == 2:
-            command_help(i, irc, argv[0], argv[1])
-        else:
-            m = f"Usage: {i.cmd_prefix}help [module] [command]"
-            irc.notice(i.channel, m)
-    else:
+    prefix = i.msg.get_botcmd_prefix()
+    args = i.msg.get_args()
+
+    if not args:
         module_list(i, irc)
+        return
+
+    argv = args.split()
+    argc = len(argv)
+
+    if argc == 1:  # Module help
+        module_help(i, irc, argv[0])
+    elif argc == 2:  # Command help
+        command_help(i, irc, argv[0], argv[1])
+    else:
+        m = f"Usage: {prefix}help [module] [command]"
+        irc.out.notice(i.channel, m)
