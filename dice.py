@@ -25,44 +25,52 @@ SOFTWARE.
 
 import random
 
+
 class Module:
-    def __init__(self):
-        self.commands = ['roll']
-        self.manual = {
-            "desc": "Virtual D&D style dice rolling.",
-            "bot_commands": {
-                "roll": {
-                    "usage": lambda x: f"{x}roll <n>d<s>",
-                    "info": ("Rolls <n> number of virtual dice, each with"
-                             " <S> number of sides and returns the result"
-                             ". Example: \".roll 2d6\" rolls two six sided"
-                             " dice.")}
-            }
+    bot_commands = ['roll']
+    manual = {
+        "desc": "Virtual D&D style dice rolling.",
+        "bot_commands": {
+            "roll": {
+                "usage": lambda x: f"{x}roll <n>d<s>",
+                "info": ("Rolls <n> number of virtual dice, each with"
+                         " <S> number of sides and returns the result"
+                         ". Example: \".roll 2d6\" rolls two six sided"
+                         " dice.")}
         }
+    }
 
 
 def main(i, irc):
-    values = i.msg_nocmd.split('d')
+    msgtarget = i.msg.get_msgtarget()
+    nickname = i.msg.get_nickname()
+    prefix = i.msg.get_botcmd_prefix()
+    args = i.msg.get_args()
+
+    values = args.split('d')
     if len(values) != 2:
-        irc.notice(i.channel, f"Usage: {i.cmd_prefix}roll <n>d<s>")
+        m = f"Usage: {prefix}roll <n>d<s>"
+        irc.out.notice(msgtarget, m)
         return
 
     n_dice = int(values[0])
     n_sides = int(values[1])
 
     if n_dice > 1000 or n_sides > 1000:
-        irc.notice(i.channel, f"{i.nickname}: Too many dice or sides given.")
+        m = f"{nickname}: Too many dice or sides given."
+        irc.notice(msgtarget, m)
         return
 
     results = [random.randint(1, n_sides) for i in range(n_dice)]
 
-    limit = 15  # ToDo: Let chanops choose the limit
+    limit = 15  # TODO: Let chanops choose the limit
+
     if len(results) > limit:
         results_p = ", ".join(map(str, results[:limit])) + "..."
     else:
         results_p = ", ".join(map(str, results))
 
-    m = (f"{i.nickname} rolled {n_dice} {'die' if n_dice == 1 else 'dice'}"
+    m = (f"{nickname} rolled {n_dice} {'die' if n_dice == 1 else 'dice'}"
          f" with {n_sides} sides: {results_p} (Total: {sum(results)})")
 
-    irc.privmsg(i.channel, m)
+    irc.out.notice(msgtarget, m)
