@@ -35,14 +35,13 @@ import requests
 
 
 class Module():
-    def __init__(self):
-        self.commands = ["time"]
-        self.manual = {
-            "desc": "Get time information about a country, a city, or a state",
-            "bot_commands": {
-                "time": {"usage": lambda x: f"{x}time <country/city/state>"}
-            }
+    bot_commands = ["time"]
+    manual = {
+        "desc": "Get time information about a country, a city, or a state",
+        "bot_commands": {
+            "time": {"usage": lambda x: f"{x}time <country/city/state>"}
         }
+    }
 
 
 username = "bugmenotuser"
@@ -84,5 +83,8 @@ def get_timezone_from_name(query):
 
 
 def main(i, irc):
-    query = urllib.parse.quote_plus(i.msg_nocmd)
-    irc.privmsg(i.channel, get_timezone_from_name(query))
+    msgtarget = i.msg.get_msgtarget()
+    args = i.msg.get_args()
+
+    query = urllib.parse.quote_plus(args)
+    irc.out.notice(msgtarget, get_timezone_from_name(query))
