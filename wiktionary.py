@@ -1,28 +1,27 @@
-#!/usr/bin/env python3
 # coding=utf-8
 
-# Wiktionary Module for Drastikbot
+# Wiktionary module for drastikbot2
+##
+# Depends
+# -------
+# pip: requests, beautifulsoup4
+
+# Copyright (C) 2018, 2021 drastik.org
 #
-# Depends:
-#   - requests       :: $ pip3 install requests
-#   - beautifulsoup4 :: $ pip3 install beautifulsoup4
+# This file is part of drastikbot.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, version 3.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-'''
-Copyright (C) 2018 drastik.org
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
 
 import requests
 import bs4
@@ -31,30 +30,28 @@ from dbot_tools import p_truncate
 
 
 class Module:
-    def __init__(self):
-        self.commands = ['wiktionary', 'wt']
-
-        usage = lambda x, y: f"{x}{y} <word> [-e <num>]"
-        info = ("The -e option allows you to choose other defintions."
-                " The number of definitions is listed in parenthesis in the"
-                " result. In a query, the bot will post the full definitions"
-                " without truncating the text.")
-        self.manual = {
-            "desc": "Search https://en.wiktionary.org/ for word definitions.",
-            "bot_commands": {
-                "wiktionary": {"usage": lambda x: usage(x, "wiktionary"),
-                               "info": info,
-                               "alias": ["wt"]},
-                "wt": {"usage": lambda x: usage(x, "wt"),
-                       "info": info,
-                       "alias": ["wiktionary"]}
-            }
+    bot_commands = ["wiktionary", "wt"]
+    usage = lambda x, y: f"{x}{y} <word> [-e <num>]"
+    info = ("The -e option allows you to choose other defintions."
+            " The number of definitions is listed in parenthesis in the"
+            " result. In a query, the bot will post the full definitions"
+            " without truncating the text.")
+    manual = {
+        "desc": "Search https://en.wiktionary.org/ for word definitions.",
+        "bot_commands": {
+            "wiktionary": {"usage": lambda x: usage(x, "wiktionary"),
+                           "info": info,
+                           "alias": ["wt"]},
+            "wt": {"usage": lambda x: usage(x, "wt"),
+                   "info": info,
+                   "alias": ["wiktionary"]}
         }
+    }
 
 
 # ----- Global Constants ----- #
 r_timeout = 10
-bs4_parser = 'html.parser'
+bs4_parser = "html.parser"
 # ---------------------------- #
 
 
@@ -114,7 +111,7 @@ def wiktionary(url, res):
     return extract_etymologies(html)
 
 
-def query(args):
+def search_query(args):
     # Get the args list and the commands
     # Join the list to a string and return
     _args = args[:]
@@ -128,46 +125,51 @@ def query(args):
 
 
 def main(i, irc):
-    if not i.msg_nocmd:
-        msg = (f'Usage: {i.cmd_prefix}{i.cmd} <Word> [-e <NUM>]')
-        return irc.privmsg(i.channel, msg)
+    msgtarget = i.msg.get_msgtarget()
+    nickname = i.msg.get_nickname()
+    botcmd = i.msg.get_botcmd()
+    prefix = i.msg.get_botcmd_prefix()
+    args = i.msg.get_args()
 
-    args = i.msg_nocmd.split()
+    if not args:
+        m = (f'Usage: {prefix}{botcmd} <Word> [-e <NUM>]')
+        irc.out.notice(msgtarget, m)
+        return
 
-    if '-e' in args:
-        idx = args.index('-e')
-        res = int(args[idx + 1])
+    argv = args.split()
+
+    if '-e' in argv:
+        idx = argv.index('-e')
+        res = int(argv[idx + 1])
     else:
         res = 1
 
-    q = query(args)
+    q = search_query(argv)
     q_web = q.replace(" ", "_")
     url = f"https://en.wiktionary.org/wiki/{q_web}"
     result = wiktionary(url, res)
     result_length = len(result)
 
     if res not in range(1, result_length + 1):
-        msg = f'Wiktionary: No definition was found for "{q}" | {url}'
-        return irc.privmsg(i.channel, msg)
+        m = f'Wiktionary: No definition was found for "{q}" | {url}'
+        irc.out.notice(msgtarget, m)
+        return
 
-    if res == 1:
-        try:
-            result = result["Etymology"]
-        except KeyError:
-            result = result["Etymology_1"]
-    else:
+    try:
         result = result[f"Etymology_{res}"]
+    except KeyError:
+        result = result["Etymology"]
 
-    msg_len = (irc.var.msg_len - 9 - 8 - len(str(result_length))
+    msg_len = (irc.msg_len - 9 - 8 - len(str(result_length))
                - (len(result) * 5) - len(url))
     p_tr_percent = 100 / len(result)
 
     txt = ""
     for part, cont in result.items():
         rslt = f"{part}: {cont}"
-        if not i.nickname == i.channel:
+        if nickname != msgtarget:
             rslt = p_truncate(rslt, msg_len, p_tr_percent, True)
         txt += f"{rslt} | "
 
     rpl = f"{q} | {txt}({result_length}) | {url}"
-    irc.privmsg(i.channel, rpl)
+    irc.out.notice(msgtarget, rpl)
