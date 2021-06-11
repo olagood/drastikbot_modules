@@ -29,26 +29,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
 import urllib.parse
-import json
 import requests
 import bs4
 import url  # drastikbot_modules: url.py
 
 
 class Module:
-    def __init__(self):
-        self.commands = ['g', 'bing', 'ddg', 'searx', 'sp']
-        self.manual = {
-            "desc": ("Get search results from Duckduckgo, Google, Bing"
-                     ", Searx and Startpage."),
-            "bot_commands": {
-                "g": {"usage": lambda x: f"{x}g <query>"},
-                "bing": {"usage": lambda x: f"{x}bing <query>"},
-                "ddg": {"usage": lambda x: f"{x}ddg <query>"},
-                "searx": {"usage": lambda x: f"{x}searx <query>"},
-                "sp": {"usage": lambda x: f"{x}sp <query>"}
-            }
+    bot_commands = ['g', 'bing', 'ddg', 'searx', 'sp']
+    manual = {
+        "desc": ("Get search results from Duckduckgo, Google, Bing"
+                 ", Searx and Startpage."),
+        "bot_commands": {
+            "g": {"usage": lambda x: f"{x}g <query>"},
+            "bing": {"usage": lambda x: f"{x}bing <query>"},
+            "ddg": {"usage": lambda x: f"{x}ddg <query>"},
+            "searx": {"usage": lambda x: f"{x}searx <query>"},
+            "sp": {"usage": lambda x: f"{x}sp <query>"}
         }
+    }
 
 
 # ----- Constants ----- #
@@ -89,9 +87,20 @@ def urlfix(url):
 # Google
 # ====================================================================
 
-def google(query):
-    search = f'https://www.google.com/search?q={query}'
-    return "google", "This search engine is not supported yet."
+def google(args):
+    query = urllib.parse.quote(args, safe="")
+    u = f"https://www.google.com/search?q={query}"
+    h = {
+        "Accept-Language": lang,
+        "user-agent": ua_chrome_90,
+    }
+    r = requests.get(u, headers=h, timeout=10)
+    soup = bs4.BeautifulSoup(r.text, parser)
+
+    results_l = soup.find("div", {"id": "search"}).find_all("a")
+    result = results_l[0].get("href")
+
+    return "google", result
 
 
 # ====================================================================
@@ -101,7 +110,7 @@ def google(query):
 def bing(args):
     query = urllib.parse.quote(args, safe="")
     u = f"https://bing.com/search?q={query}"
-    h = headers={
+    h = {
         "Accept-Language": lang,
         "user-agent": ua_chrome_90,
     }
@@ -154,18 +163,42 @@ def duckduckgo_search(query):
 # Searx
 # ====================================================================
 
-def searx(query):
-    search = f'https://searx.me/?q={query}'
-    return "searx", "This search engine is not supported yet."
+def searx(args):
+    query = urllib.parse.quote(args, safe="")
+    u = ("https://search.mdosch.de/search"
+         f"?q={query}&format=json&category_general=1")
+    h = {
+        "user-agent": ua_chrome_90,
+        "Accept-Language": lang
+    }
+    r = requests.get(u, headers=h, timeout=10)
+    try:
+        result = r.json()["results"][0]["url"]
+    except IndexError:
+        result = f"\x0308Sorry, i could not find any results for:\x0F {args}"
+
+    return "searx", result
 
 
 # ====================================================================
 # Startpage
 # ====================================================================
 
-def startpage(query):
-    search = f'https://www.startpage.com/do/asearch?q={query}'
-    return "startpage", "This search engine is not supported yet."
+def startpage(args):
+    query = urllib.parse.quote(args, safe="")
+    u = ("https://www.startpage.com/sp/search"
+         f"?query={query}&language=english")
+    h = {
+        "user-agent": ua_chrome_90,
+        "Accept-Language": lang
+    }
+    r = requests.get(u, headers=h, timeout=10)
+    soup = bs4.BeautifulSoup(r.text, parser)
+
+    results_l = soup.find_all("a", {"class": ["result-link"]})
+    result = results_l[0].get("href")
+
+    return "startpage", result
 
 
 # ====================================================================
@@ -192,9 +225,9 @@ logo_d = {
 
 
 def main(i, irc):
-    args = i.msg_nocmd
-    botcmd = i.cmd
-    receiver = i.channel
+    msgtarget = i.msg.get_msgtarget()
+    botcmd = i.msg.get_botcmd()
+    args = i.msg.get_args()
 
     engine, result = dispatch[botcmd](args)
 
@@ -212,4 +245,4 @@ def main(i, irc):
     # Truncate the output just in case. We can't send 512 bytes anyway.
     m = m[:512]
 
-    irc.notice(receiver, m)
+    irc.out.notice(msgtarget, m)
