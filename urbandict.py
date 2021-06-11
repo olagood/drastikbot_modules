@@ -30,16 +30,18 @@ from dbot_tools import p_truncate
 
 
 class Module:
-    def __init__(self):
-        self.commands = ['ud']
-        self.manual = {
-            "desc": "Search https://www.urbandictionary.com/ for definitions.",
-            "bot_commands": {
-                "ud": {"usage": lambda x: f"{x}ud <query> [--def <num>]",
-                       "info": ("The --def option allows you to select other"
-                                " definitions. Example: .ud irc --def 2")}
-            }
+    bot_commands = ['ud']
+    manual = {
+        "desc": "Search https://www.urbandictionary.com/ for definitions.",
+        "bot_commands": {
+            "ud": {"usage": lambda x: f"{x}ud <query> [--def <num>]",
+                   "info": ("The --def option allows you to select other"
+                            " definitions. Example: .ud irc --def 2")}
         }
+    }
+
+
+logo = '\x0300,01Urban\x0F\x0308,01Dictionary\x0F'
 
 
 def ud(query, res):
@@ -70,21 +72,30 @@ def query(args):
 
 
 def main(i, irc):
-    logo = '\x0300,01Urban\x0F\x0308,01Dictionary\x0F'
-    args = i.msg_nocmd.split()
+    msgtarget = i.msg.get_msgtarget()
+    botcmd = i.msg.get_botcmd()
+    prefix = i.msg.get_botcmd_prefix()
+    args = i.msg.get_args()
+
+    argv = args.split()
+
     if not args:
-        help_msg = f"Usage: {i.cmd_prefix}{i.cmd} <QUERY> [--def <NUM>]"
-        return irc.privmsg(i.channel, help_msg)
-    if '--def' in args:
-        idx = args.index('--def')
-        res = int(args[idx + 1]) - 1
+        m = f"Usage: {prefix}{botcmd} <query> [--def <num>]"
+        irc.out.notice(msgtarget, m)
+        return
+
+    if '--def' in argv:
+        idx = argv.index('--def')
+        res = int(argv[idx + 1]) - 1
     else:
         res = 0
-    q = query(args)
+
+    q = query(argv)
+
     try:
         global msg_len
         # msg_len = msg_len - "PRIVMSG :" - chars - \r\n
-        msg_len = irc.var.msg_len - 9 - 101 - 2
+        msg_len = irc.msg_len - 9 - 101 - 2
         u = ud(q, res)
         rpl = (f"{logo}: \x02{u[0]}\x0F"
                f" | {u[1]}"
@@ -95,4 +106,5 @@ def main(i, irc):
                f" | \x02Link:\x0F {u[6]}")
     except IndexError:
         rpl = (f"{logo}: No definition was found for \x02{q}\x0F")
-    irc.privmsg(i.channel, rpl)
+
+    irc.out.notice(msgtarget, rpl)
