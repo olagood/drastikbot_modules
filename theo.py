@@ -25,17 +25,16 @@ import random
 
 
 class Module:
-    def __init__(self):
-        self.commands = ['theo']
-        self.manual = {
-            "desc": ("Post quotes from OpenBSD mg's theo.c mode. This mode has"
-                     " been removed from mg. This module includes all the"
-                     " quotes from the last commit to theo.c before it was"
-                     " removed: "
-                     "http://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/"
-                     "mg/Attic/theo.c"),
-            "bot_commands": {"theo": {"usage": lambda x: f"{x}theo"}}
-        }
+    bot_commands = ['theo']
+    manual = {
+        "desc": ("Post quotes from OpenBSD mg's theo.c mode. This mode has"
+                 " been removed from mg. This module includes all the"
+                 " quotes from the last commit to theo.c before it was"
+                 " removed: "
+                 "http://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/"
+                 "mg/Attic/theo.c"),
+        "bot_commands": {"theo": {"usage": lambda x: f"{x}theo"}}
+    }
 
 
 talk = [
@@ -156,5 +155,8 @@ talk = [
 
 
 def main(i, irc):
-    msg = f"{i.nickname}: {random.SystemRandom().choice(talk)}"
-    irc.privmsg(i.channel, msg)
+    msgtarget = i.msg.get_msgtarget()
+    nickname = i.msg.get_nickname()
+
+    msg = f"{nickname}: {random.SystemRandom().choice(talk)}"
+    irc.out.notice(msgtarget, msg)
