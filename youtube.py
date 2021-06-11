@@ -1,34 +1,32 @@
-#!/usr/bin/env python3
 # coding=utf-8
 
-# YouTube Module for Drastikbot
+# YouTube module for drastikbot2
 #
-# Search YouTube and return the resulting video.
-# When a YouTube url is posted return the video's information.
+# Search YouTube and return a video url.
 #
-# If you are planning to use the url module or a url bot, consider adding the
-# following blacklist: ['youtu.be/', 'youtube.com/watch']
+# Depends
+# -------
+# pip: requests, beautifulsoup4
+# drastikbot_modules: url
+
+# Copyright (C) 2018-2021 drastik.org
 #
-# Depends:
-#   - requests      :: $ pip3 install requests
-#   - beautifulsoup :: $ pip3 install beautifulsoup4
+# This file is part of drastikbot.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, version 3.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-'''
-Copyright (C) 2018-2020 drastik.org
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
+import traceback
 
 import urllib.parse
 import json
@@ -39,12 +37,11 @@ import url
 
 
 class Module:
-    def __init__(self):
-        self.commands = ['yt']
-        self.manual = {
-            "desc": "Search YouTube and return the resulting video url.",
-            "bot_commands": {"yt": {"usage": lambda x: f"{x}yt <video title>"}}
-        }
+    bot_commands = ['yt']
+    manual = {
+        "desc": "Search YouTube and return the resulting video url.",
+        "bot_commands": {"yt": {"usage": lambda x: f"{x}yt <video title>"}}
+    }
 
 
 # ----- Constants ----- #
@@ -180,11 +177,14 @@ def output_legacy(yt_id):
 
 
 def main(i, irc):
-    if i.cmd:
-        query = urllib.parse.quote_plus(i.msg_nocmd)
-        try:
-            out = output(yt_search(query))
-        except Exception as e:
-            print(e)
-            out = output_legacy(yt_search_legacy(query))
-        irc.privmsg(i.channel, out)
+    msgtarget = i.msg.get_msgtarget()
+    args = i.msg.get_args()
+
+    query = urllib.parse.quote_plus(args)
+    try:
+        m = output(yt_search(query))
+    except Exception:
+        print(traceback.format_exc())
+        m = output_legacy(yt_search_legacy(query))
+
+    irc.out.notice(msgtarget, m)
