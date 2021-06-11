@@ -26,13 +26,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import random
 
 
-class Module():
-    def __init__(self):
-        self.commands = ['tarot']
-        self.manual = {
-            "desc": "Draws three cards from the tarot deck.",
-            "bot_commands": {"tarot": {"usage": lambda x: f"{x}tarot"}}
-        }
+class Module:
+    bot_commands = ['tarot']
+    manual = {
+        "desc": "Draws three cards from the tarot deck.",
+        "bot_commands": {"tarot": {"usage": lambda x: f"{x}tarot"}}
+    }
 
 
 major_arcana = [
@@ -72,5 +71,6 @@ deck = major_arcana + minor_arcana
 
 def main(i, irc):
     cards = random.sample(deck, 3)
-    if 'tarot' == i.cmd:
-        irc.privmsg(i.channel, f'{cards[0]}, {cards[1]}, {cards[2]}')
+    irc.out.notice(
+        i.msg.get_msgtarget(),
+        f'{i.msg.get_nickname()}: {cards[0]}, {cards[1]}, {cards[2]}')
