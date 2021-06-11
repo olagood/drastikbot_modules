@@ -1,65 +1,66 @@
-#!/usr/bin/env python3
 # coding=utf-8
 
-# Text Module for Drastikbot
+# Text module for drastikbot2
 #
 # Transform textual input to various other styles.
 
-'''
-Copyright (C) 2019 drastik.org
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
+# Copyright (C) 2019, 2021 drastik.org
+#
+# This file is part of drastikbot.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, version 3 only.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import random
 
 
 class Module:
-    def __init__(self):
-        self.commands = [
-            "ae", "text-c", "text-nc", "text-s", "text-ns", "flag", "cirrus",
-            "strike", "strikethrough"
-        ]
-        self.manual = {
-            "desc": "Text transformation tools",
-            "bot_commands": {
-                "ae": {"usage": lambda p: f"{p}ae <text>",
-                       "info": "Example: Ｈｅｌｌｏ，　Ｗｏｒｌｄ！"},
-                "text-c": {"usage": lambda p: f"{p}text-c <text>",
-                           "info": "Example: ⒽⒺⓁⓁⓄ, ⓌⓄⓇⓁⒹ!"},
-                "text-nc": {"usage": lambda p: f"{p}text-nc <text>",
-                            "info": "Example: 🅗🅔🅛🅛🅞, 🅦🅞🅡🅛🅓!"},
-                "text-s": {"usage": lambda p: f"{p}text-s <text>",
-                           "info": "Example: 🄷🄴🄻🄻🄾, 🅆🄾🅁🄻🄳!"},
-                "text-ns": {"usage": lambda p: f"{p}text-ns <text>",
-                            "info": "Example: 🅷🅴🅻🅻🅾, 🆆🅾🆁🅻🅳!"},
-                "flag": {"usage": lambda p: f"{p}flag <text>",
-                         "info": ("Transforms two letter country codes to"
-                                  " regional indicator symbols.")},
-                "cirrus": {"usage": lambda p: f"{p}cirrus <text>",
-                           "info": "Example: Hello, WWorld!"},
-                "strike": {"usage": lambda p: f"{p}strike <text>",
-                           "info": "Example: H̶e̶l̶l̶o̶,̶ ̶W̶o̶r̶l̶d̶!̶",
-                           "alias": ["strikethrough"]},
-                "strikethrough": {
-                    "usage": lambda p: f"{p}strikethrough <text>",
-                    "info": "Example: H̶e̶l̶l̶o̶,̶ ̶W̶o̶r̶l̶d̶!̶",
-                    "alias": ["strike"]
-                }
+    bot_commands = [
+        "ae", "text-c", "text-nc", "text-s", "text-ns", "flag", "cirrus",
+        "strike", "strikethrough"
+    ]
+    manual = {
+        "desc": "Text transformation tools",
+        "bot_commands": {
+            "ae": {"usage": lambda p: f"{p}ae <text>",
+                   "info": "Example: Ｈｅｌｌｏ，　Ｗｏｒｌｄ！"},
+            "text-c": {"usage": lambda p: f"{p}text-c <text>",
+                       "info": "Example: ⒽⒺⓁⓁⓄ, ⓌⓄⓇⓁⒹ!"},
+            "text-nc": {"usage": lambda p: f"{p}text-nc <text>",
+                        "info": "Example: 🅗🅔🅛🅛🅞, 🅦🅞🅡🅛🅓!"},
+            "text-s": {"usage": lambda p: f"{p}text-s <text>",
+                       "info": "Example: 🄷🄴🄻🄻🄾, 🅆🄾🅁🄻🄳!"},
+            "text-ns": {"usage": lambda p: f"{p}text-ns <text>",
+                        "info": "Example: 🅷🅴🅻🅻🅾, 🆆🅾🆁🅻🅳!"},
+            "flag": {"usage": lambda p: f"{p}flag <text>",
+                     "info": ("Transforms two letter country codes to"
+                              " regional indicator symbols.")},
+            "cirrus": {"usage": lambda p: f"{p}cirrus <text>",
+                       "info": "Example: Hello, WWorld!"},
+            "strike": {"usage": lambda p: f"{p}strike <text>",
+                       "info": "Example: H̶e̶l̶l̶o̶,̶ ̶W̶o̶r̶l̶d̶!̶",
+                       "alias": ["strikethrough"]},
+            "strikethrough": {
+                "usage": lambda p: f"{p}strikethrough <text>",
+                "info": "Example: H̶e̶l̶l̶o̶,̶ ̶W̶o̶r̶l̶d̶!̶",
+                "alias": ["strike"]
             }
         }
+    }
 
+
+# ====================================================================
+# Translation maps
+# ====================================================================
 
 # https://en.wikipedia.org/wiki/Halfwidth_and_fullwidth_forms_(Unicode_block)
 FULLWIDTH_MAP = dict((i, i + 0xFEE0) for i in range(0x21, 0x7F))
@@ -105,15 +106,10 @@ REGIONAL_INDICATOR_SYMBOL_MAP = {
     **_REGIONAL_INDICATOR_SYMBOL_L_MAP
 }
 
-command_map_d = {
-    "ae": FULLWIDTH_MAP,
-    "text-c": CIRCLED_MAP,
-    "text-nc": NEGATIVE_CIRCLED_MAP,
-    "text-s": SQUARED_MAP,
-    "text-ns": NEGATIVE_SQUARED_MAP,
-    "flag": REGIONAL_INDICATOR_SYMBOL_MAP,
-}
 
+# ====================================================================
+# Transormation functions
+# ====================================================================
 
 def cirrus(text):
     words = text.split()
@@ -135,18 +131,39 @@ def strikethrough(text):
     return "\u0336".join(text) + '\u0336'
 
 
+# ====================================================================
+# Main
+# ====================================================================
+
+translate_map_d = {
+    "ae": FULLWIDTH_MAP,
+    "text-c": CIRCLED_MAP,
+    "text-nc": NEGATIVE_CIRCLED_MAP,
+    "text-s": SQUARED_MAP,
+    "text-ns": NEGATIVE_SQUARED_MAP,
+    "flag": REGIONAL_INDICATOR_SYMBOL_MAP,
+}
+
+transform_fun_d = {
+    "cirrus": cirrus,
+    "strike": strikethrough,
+    "strikethrough": strikethrough
+}
+
+
 def main(i, irc):
-    if not i.msg_nocmd:
-        return
-    s = i.msg_nocmd
+    msgtarget = i.msg.get_msgtarget()
+    botcmd = i.msg.get_botcmd()
+    prefix = i.msg.get_botcmd_prefix()
+    args = i.msg.get_args()
 
-    if i.cmd == "cirrus":
-        return irc.privmsg(i.channel, cirrus(s))
-    if i.cmd == "strike" or i.cmd == "strikethrough":
-        return irc.privmsg(i.channel, strikethrough(s))
+    if not args:
+        m = f"{prefix}{botcmd} <text>"
+    elif botcmd in transform_fun_d:
+        m = transform_fun_d[botcmd](args)
+    elif botcmd in translate_map_d:
+        m = args.translate(translate_map_d[botcmd])
+        if botcmd == "ae" and m == args:
+            m = args.replace("", " ")[1: -1]
 
-    t = s.translate(command_map_d[i.cmd])
-    if i.cmd == "ae" and t == s:
-        t = s.replace("", " ")[1: -1]
-
-    irc.privmsg(i.channel, t)
+    irc.out.notice(msgtarget, m)
