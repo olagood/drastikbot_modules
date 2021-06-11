@@ -1,94 +1,72 @@
-#!/usr/bin/env python3
 # coding=utf-8
 
-# Wikipedia Module for Drastikbot
+# Wikipedia (MediaWiki) module for drastikbot2
 #
-# NOTE: This module is making use of the MediaWiki API,
-# so it should work with other MediaWiki based websites.
+# This module is making use of the MediaWiki API to find articles from
+# Wikipedia.  The code  should be  able to  work with  other MediaWiki
+# websites
 #
-# Depends:
-#   - requests       :: $ pip3 install requests
-#   - beautifulsoup4 :: $ pip3 install beautifulsoup4
+# Depends
+# -------
+# pip: requests, beautifulsoup4
 
-'''
-Copyright (C) 2017 drastik.org
+# Copyright (C) 2017, 2021 drastik.org
+#
+# This file is part of drastikbot.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, version 3.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
 
 import requests
 import bs4
 import urllib.parse
-from dbot_tools import Config, p_truncate
+from dbot_tools import p_truncate
 
 
 class Module:
-    def __init__(self):
-        self.commands = ['wikipedia', 'wiki', 'w']
-
-        usage = lambda x, y: (f"{x}{y} <article> [--full] [--search]"
-                           " [--sections] [-l <lang>] [--resuult <num>]")
-        info = ("--info: Get the full section in a query."
-                " / --search: Search and get the results in a query."
-                " / --sections: Get all the sections of an article in a query."
-                " / -l: Post an article from a specific language"
-                " / --result: Select specific result."
-                " <num> is the index of the result returned by --search"
-                " / Use #section after the article's name to get a specific"
-                " section. Example: .w irc#Technical information")
-        self.manual = {
-            "desc": ("Search wikipedia and post a snippet from the resulting"
-                     " article."),
-            "bot_commands": {
-                "wikipedia": {"usage": lambda x: usage(x, "wikipedia"),
-                              "info": info,
-                              "alias": ["w", "wiki"]},
-                "wiki": {"usage": lambda x: usage(x, "wiki"),
-                         "info": info,
-                         "alias": ["w", "wikipedia"]},
-                "w": {"usage": lambda x: usage(x, "w"),
-                      "info": info,
-                      "alias": ["wikipedia", "wiki"]}
-            }
+    bot_commands = ["wikipedia", "wiki", "w"]
+    usage = lambda x, y: (f"{x}{y} <article> [--full] [--search]"
+                          " [--sections] [-l <lang>] [--resuult <num>]")
+    info = ("--info: Get the full section in a query."
+            " / --search: Search and get the results in a query."
+            " / --sections: Get all the sections of an article in a query."
+            " / -l: Post an article from a specific language"
+            " / --result: Select specific result."
+            " <num> is the index of the result returned by --search"
+            " / Use #section after the article's name to get a specific"
+            " section. Example: .w irc#Technical information")
+    manual = {
+        "desc": ("Search wikipedia and post a snippet from the resulting"
+                 " article."),
+        "bot_commands": {
+            "wikipedia": {"usage": lambda x: usage(x, "wikipedia"),
+                          "info": info,
+                          "alias": ["w", "wiki"]},
+            "wiki": {"usage": lambda x: usage(x, "wiki"),
+                     "info": info,
+                     "alias": ["w", "wikipedia"]},
+            "w": {"usage": lambda x: usage(x, "w"),
+                  "info": info,
+                  "alias": ["wikipedia", "wiki"]}
         }
+    }
 
 
 # ----- Global Constants ----- #
 r_timeout = 10
-bs4_parser = 'html.parser'
+bs4_parser = "html.parser"
+settings_name = "wikipedia"
 # ---------------------------- #
-
-
-def language(args, config, channel):
-    '''Set the language used to search for wikipedia articles'''
-    if '-l' in args:
-        # Check if the language command has been used and
-        # use the given value instead of the configuration
-        index = args.index('-l')
-        return args[index + 1]
-    else:
-        # Try loading from the configuration
-        try:
-            # Check the configuration file for per channel language settings.
-            return config['irc']['modules']['wikipedia']['channels'][channel]
-        except KeyError:
-            try:
-                # Check the configuration file for global language settings
-                return config['irc']['modules']['wikipedia']['lang']
-            except KeyError:
-                # Return English if all above fails
-                return 'en'
 
 
 def mw_opensearch(query, url, max_results=1):
@@ -96,8 +74,8 @@ def mw_opensearch(query, url, max_results=1):
     Uses the MediaWiki API:Opensearch
     https://en.wikipedia.org/w/api.php?action=help&modules=opensearch
 
-    Search MediaWiki for articles relevant to the search 'query'
-    It returns a [query,[titles],[descriptions],[urls]] of relevant
+    Search MediaWiki for articles relevant to the search `query'
+    It returns a [query, [titles], [descriptions], [urls]] list of relevant
     results to the search query.
 
     'query' is the string to search for
@@ -217,94 +195,126 @@ def str2url(url):
     return urllib.parse.quote_plus(url)
 
 
-def query(args):
-    # Get the args list and the commands
-    # Join the list to a string and return
-    _args = args[:]
+def language(argv, config, channel):
+    '''Set the language used to search for wikipedia articles'''
+    if '-l' in argv:
+        # Check if the language command has been used and
+        # use the given value instead of the configuration
+        index = argv.index('-l')
+        return argv[index + 1]
+    else:
+        settings = config.get_module_settings("wikipedia")
+        try:
+            return settings["lang"][channel]
+        except KeyError:
+            try:
+                return settings["lang"]["default"]
+            except KeyError:
+                return 'en'  # Default if nothing is set.
+
+
+def search_query(args):
+    args = args.copy()
     cmds = ['--search', '--sections', '--full']
     cmds_args = ['--result', '-r', '-l']
+
     for i in cmds_args:
         try:
-            idx = _args.index(i)
-            del _args[idx]
-            del _args[idx]
+            idx = args.index(i)
+            del args[idx]
+            del args[idx]
         except ValueError:
             pass
+
     for i in cmds:
         try:
-            idx = _args.index(i)
-            del _args[idx]
+            idx = args.index(i)
+            del args[idx]
         except ValueError:
             pass
-    return ' '.join(_args)
+
+    return ' '.join(args)
 
 
 def main(i, irc):
-    if not i.msg_nocmd:
-        msg = (f'Usage: {i.cmd_prefix}{i.cmd} <Article> '
-               '[--full, --search, --sections -l], [--result <NUM>]')
-        return irc.privmsg(i.channel, msg)
+    msgtarget = i.msg.get_msgtarget()
+    nickname = i.msg.get_nickname()
+    botcmd = i.msg.get_botcmd()
+    prefix = i.msg.get_botcmd_prefix()
+    args = i.msg.get_args()
 
-    channel = i.channel
-    args = i.msg_nocmd.split()
-    config = Config(irc.cd).read()
-    lang = language(args, config, i.channel)
-    # Do not put a "/" slash at the end of the url
-    mediawiki_url = f'https://{lang}.wikipedia.org'
+    if not args:
+        m = (f'Usage: {prefix}{botcmd} <Article> '
+             '[--full, --search, --sections -l], [--result <NUM>]')
+        irc.out.notice(msgtarget, m)
+        return
+
+    argv = args.split()
+    config = i.bot["conf"]
+
+    lang = language(argv, config, msgtarget)
+
+    mw_url = f'https://{lang}.wikipedia.org'
     logo = '\x0301,00Wikipedia\x0F'
-    limit = True
-    search_q = query(args)
-    global msg_len
-    msg_len = irc.var.msg_len - 9 - 22
 
-    if '--search' in args:
-        opensearch = mw_opensearch(search_q, mediawiki_url, 10)
+    limit = True
+    search_q = search_query(argv)
+
+    global msg_len
+    msg_len = irc.msg_len - 9 - 22
+
+    if '--search' in argv:
+        opensearch = mw_opensearch(search_q, mw_url, 10)
         rs_string = ''
         for n in opensearch[1]:
             rs_string += f'[{opensearch[1].index(n) + 1}:{n}] '
-        msg = (f'{logo}: \x0302[search results for: '
-               f'{search_q}]\x0F: {rs_string}')
-        return irc.privmsg(i.nickname, msg)
+        m = (f'{logo}: \x0302[search results for: '
+             f'{search_q}]\x0F: {rs_string}')
+        irc.out.notice(nickname, m)
+        return
 
-    if '--full' in args:
+    if '--full' in argv:
         limit = False
-        channel = i.nickname
+        msgtarget = nickname
 
-    if '--result' in args or '-r' in args:
+    if '--result' in argv or '-r' in argv:
         try:
-            r_index = args.index('--result')
+            r_index = argv.index('--result')
         except ValueError:
-            r_index = args.index('-r')
-        os_limit = int(args[r_index + 1])
-        opensearch = mw_opensearch(search_q, mediawiki_url, os_limit)
+            r_index = argv.index('-r')
+        os_limit = int(argv[r_index + 1])
+        opensearch = mw_opensearch(search_q, mw_url, os_limit)
         try:
             title = opensearch[1][os_limit - 1]
         except IndexError:
-            msg = f'{logo}: No article was found for \x02{search_q}\x0F'
-            return irc.privmsg(channel, msg)
+            m = f'{logo}: No article was found for \x02{search_q}\x0F'
+            irc.out.notice(msgtarget, m)
+            return
     else:
-        opensearch = mw_opensearch(search_q, mediawiki_url)
+        opensearch = mw_opensearch(search_q, mw_url, 1)
         try:
             title = opensearch[1][0]
         except IndexError:
-            msg = f'{logo}: No article was found for \x02{search_q}\x0F'
-            return irc.privmsg(channel, msg)
-    wikiurl = f'{mediawiki_url}/wiki/{title.replace(" ", "_")}'
+            m = f'{logo}: No article was found for \x02{search_q}\x0F'
+            irc.out.notice(msgtarget, m)
+            return
 
-    if '--sections' in args:
-        sections_out = mw_list_sections(title, mediawiki_url)
+    wikiurl = f'{mw_url}/wiki/{title.replace(" ", "_")}'
+
+    if '--sections' in argv:
+        sections_out = mw_list_sections(title, mw_url)
         sec_out_str = ' | '.join(sections_out[1][0])
-        msg = (f'{logo}: \x0302 [sections for {sections_out[0]}]\x0F: '
-               f'{sec_out_str} [ {wikiurl} ]')
-        irc.privmsg(i.nickname, msg)
+        m = (f'{logo}: \x0302 [sections for {sections_out[0]}]\x0F: '
+             f'{sec_out_str} [ {wikiurl} ]')
+        irc.out.notice(nickname, m)
     elif '#' in search_q:
         ts_list = search_q.split('#')
-        sections_out = mw_list_sections(title, mediawiki_url)
-        snippet = mw_parse_section(mediawiki_url, sections_out[1],
-                                   title, ts_list[1], limit)
-        msg = f'{logo}: \x02{title}#{ts_list[1]}\x0F | {snippet} | {wikiurl}'
-        irc.privmsg(channel, msg)
+        sections_out = mw_list_sections(title, mw_url)
+        snippet = mw_parse_section(
+            mw_url, sections_out[1], title, ts_list[1], limit)
+        m = f'{logo}: \x02{title}#{ts_list[1]}\x0F | {snippet} | {wikiurl}'
+        irc.out.notice(msgtarget, m)
     else:
-        snippet = mw_parse_intro(mediawiki_url, title, limit)
-        msg = f'{logo}: \x02{title}\x0F | {snippet} | {wikiurl}'
-        irc.privmsg(channel, msg)
+        snippet = mw_parse_intro(mw_url, title, limit)
+        m = f'{logo}: \x02{title}\x0F | {snippet} | {wikiurl}'
+        irc.out.notice(msgtarget, m)
