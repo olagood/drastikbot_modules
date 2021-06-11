@@ -13,7 +13,7 @@
 #   - sed :: default unix program, should be in the repos
 
 '''
-Copyright (C) 2018 drastik.org
+Copyright (C) 2018, 2021 drastik.org
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -35,19 +35,18 @@ from dbot_tools import p_truncate
 
 
 class Module:
-    def __init__(self):
-        self.auto = True
-        self.manual = {
-            "desc": (
-                "Usage: s/regexp/replacement/flags"
-                " | Try to match a 'regexp' with one of the previous"
-                " messages posted and replace it with 'replacement'."
-                " For flags and a detailed explanation see:"
-                " https://www.gnu.org/software/sed/manual/html_node/"
-                "The-_0022s_0022-Command.html"
-                " | Extensions: \"s///-n\" n is the number of matches to skip"
-                " If the 'number' flag is used -n should be used after it.")
-        }
+    irc_commands = ["PRIVMSG"]
+    manual = {
+        "desc": (
+            "Usage: s/regexp/replacement/flags"
+            " | Try to match a 'regexp' with one of the previous"
+            " messages posted and replace it with 'replacement'."
+            " For flags and a detailed explanation see:"
+            " https://www.gnu.org/software/sed/manual/html_node/"
+            "The-_0022s_0022-Command.html"
+            " | Extensions: \"s///-n\" n is the number of matches to skip"
+            " If the 'number' flag is used -n should be used after it.")
+    }
 
 
 def write(varget, varset, channel, msg):
@@ -78,22 +77,26 @@ def call_sed(msg, sed_args):
     return p.stdout.decode('utf-8')
 
 
-def main(i, irc):
-    sed_parse = re.compile('(?<!\\\\)/')
-    sed_cmd = re.compile('^s/.*/.*')
-    sed_out = ''
+sed_parse = re.compile('(?<!\\\\)/')
+sed_cmd = re.compile('^s/.*/.*')
 
-    if not sed_cmd.match(i.msg):
-        write(i.varget, i.varset, i.channel, i.msg)
+
+def main(i, irc):
+    msgtarget = i.msg.get_msgtarget()
+    text = i.msg.get_text()
+
+    if not sed_cmd.match(text):
+        write(i.varget, i.varset, msgtarget, text)
         return
 
-    sed_args = sed_parse.split(i.msg)
+    sed_out = ""
+    sed_args = sed_parse.split(text)
 
     if len(sed_args) < 4:
         # check if the last / is missed etc.
         return
 
-    msglist = read(i.varget, i.channel)
+    msglist = read(i.varget, msgtarget)
 
     # Extension to allow the user match previous messages.
     # It uses the special syntax: "s///-n" where n is the
@@ -138,18 +141,18 @@ def main(i, irc):
         n = n + 1
 
     if a:
-        if '\x01ACTION' in msglist[-a][:7]:
-            msg_len = irc.var.msg_len - 9 - len(i.channel) - 10 - 2
-            sed_out = call_sed(msglist[-a][7:], sed_args)
+        if "\x01ACTION " in msglist[-a][:8]:
+            msg_len = irc.msg_len - 9 - len(msgtarget) - 10 - 2
+            sed_out = call_sed(msglist[-a][8:], sed_args)
             sed_out = sed_out.rstrip('\n').replace('\x01', "").replace('\ca', "")
             sed_out = p_truncate(sed_out, msg_len, 98, True)
-            irc.privmsg(i.channel, f'\x01ACTION {sed_out}')
+            irc.out.privmsg(msgtarget, f"\x01ACTION {sed_out}\x01")
         else:
-            msg_len = irc.var.msg_len - 9 - len(i.channel) - 2
+            msg_len = irc.msg_len - 9 - len(msgtarget) - 2
             sed_out = call_sed(msglist[-a], sed_args).strip()
             sed_out = sed_out.rstrip('\n').replace('\x01', "").replace('\ca', "")
             sed_out = p_truncate(sed_out, msg_len, 98, True)
-            irc.privmsg(i.channel, sed_out)
+            irc.out.privmsg(msgtarget, sed_out)
 
     if sed_out:
         # We try to limit the string saved in the queue to avoid:
@@ -157,5 +160,5 @@ def main(i, irc):
         # when calling 'echo' in @call_sed .
         # 512 chars are more than enough, since the bot will
         # never be able to send a message with that many.
-        write(i.varget, i.varset, i.channel, sed_out)
-    # write(dbc, i.channel, i.msg) # save commands
+        write(i.varget, i.varset, msgtarget, sed_out)
+    # write(i.varget, i.varset, msgtarget, text) # save commands
