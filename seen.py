@@ -29,108 +29,160 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import datetime
 
+from dbothelper import is_ascii_cl
+
 
 class Module:
-    def __init__(self):
-        self.auto = True
-        self.commands = ["seen"]
-        self.manual = {
-            "desc": ("See when a user was last seen posting in a channel the"
-                     " bot has joined. If the user posted in channel other"
-                     " than the one the command was given from, then the bot"
-                     " will show that channel. Private messages with the bot"
-                     " are NOT saved."),
-            "bot_commands": {
-                "seen": {"usage": lambda x: f"{x}seen <nickname>"},
-                "info": ("Example: <Alice>: .seen Bob / <Bot>:"
-                         " Bob was last seen 0:21:09 ago"
-                         " [2018-06-25 13:36:42 UTC], saying .help seen")
-            }
+    startup = True
+    irc_commands = ["PRIVMSG"]
+    manual = {
+        "desc": ("See when a user was last seen posting in a channel the"
+                 " bot has joined. If the user posted in channel other"
+                 " than the one the command was given from, then the bot"
+                 " will show that channel. Private messages with the bot"
+                 " are NOT saved."),
+        "bot_commands": {
+            "seen": {"usage": lambda x: f"{x}seen <nickname>"},
+            "info": ("Example: <Alice>: .seen Bob / <Bot>:"
+                     " Bob was last seen 0:21:09 ago"
+                     " [2018-06-25 13:36:42 UTC], saying .help seen")
         }
+    }
 
 
-def update(channel, nick, msg, time, dbc):
-    try:
-        dbc.execute(
-            '''CREATE TABLE IF NOT EXISTS seen (nick TEXT COLLATE NOCASE
-            PRIMARY KEY, msg TEXT, time TEXT, channel TEXT);''')
-    except Exception:
-        # sqlite3.OperationalError: cannot commit - no transaction is active
-        pass
-    dbc.execute(
-        '''INSERT OR IGNORE INTO seen (nick, msg, time, channel)
-        VALUES (?, ?, ?, ?);''', (nick, msg, str(time), channel))
-    dbc.execute('''UPDATE seen SET msg=?, time=?, channel=? WHERE nick=?;''',
-                (msg, str(time), channel, nick))
+def update(dbc, channel, nickname, message):
+    timestamp = str(datetime.datetime.utcnow().replace(microsecond=0))
+
+    sql = """
+        INSERT OR IGNORE INTO seen (nick, msg, time, channel)
+        VALUES (?, ?, ?, ?);
+    """
+    dbc.execute(sql, (nickname, message, timestamp, channel))
+
+    sql = """
+        UPDATE seen SET msg=?, time=?, channel=?
+        WHERE nick=?;
+    """
+    dbc.execute(sql, (message, timestamp, channel, nickname))
 
 
-def fetch(nick, dbc):
-    try:
-        dbc.execute('SELECT nick, msg, time, channel '
-                    'FROM seen WHERE nick=?;''', (nick,))
-        fetch = dbc.fetchone()
-        nickFnd = fetch[0]
-        msgFnd = fetch[1]
-        timeFnd = datetime.datetime.strptime(fetch[2], "%Y-%m-%d %H:%M:%S")
-        channelFnd = fetch[3]
-        return (msgFnd, timeFnd, channelFnd, nickFnd)
-    except Exception:
-        return False
+def fetch(dbc, nickname):
+    sql = """
+        SELECT nick, msg, time, channel
+        FROM seen WHERE nick=?;
+    """
+    dbc.execute(sql, (nickname,))
+    return dbc.fetchone()
+
+
+def init(dbc):
+    sql = """
+        CREATE TABLE IF NOT EXISTS seen (
+               nick TEXT COLLATE NOCASE PRIMARY KEY,
+               msg TEXT,
+               time TEXT,
+               channel TEXT
+        );
+    """
+    dbc.execute(sql)
 
 
 def main(i, irc):
-    dbc = i.db[1].cursor()
-    timestamp = datetime.datetime.utcnow().replace(microsecond=0)
-    args = i.msg_nocmd.split()
+    db = i.db_disk
+    dbc = db.cursor()
 
-    if not i.cmd and not i.channel == i.nickname:
-        # Avoid saving privmsges with the bot.
-        update(i.channel, i.nickname, i.msg, timestamp, dbc)
-        i.db[1].commit()
+    # Database initialization
+    if i.msg.is_command("__STARTUP"):
+        init(dbc)
+        db.commit()
         return
 
-    if i.cmd == 'seen' and ((len(args) == 1 and len(i.msg) <= 30)
-                            or i.msg_nocmd == ''):
+    msgtarget = i.msg.get_msgtarget()
+    nickname = i.msg.get_nickname()
+    is_pm = i.msg.is_pm()
+    botcmd = i.msg.get_botcmd()
+    prefix = i.msg.get_botcmd_prefix()
+    args = i.msg.get_args()
+    text = i.msg.get_text()
 
-        if not i.msg_nocmd:
-            # If no nickname is given set the args[0] to the user's nickname
-            args = [i.nickname]
+    # Save user messages.
+    if not i.msg.is_botcmd("seen"):
 
-        get = fetch(args[0], dbc)
-        if get:
-            ago = timestamp - get[1]
-            if '\x01ACTION' in get[0][:10]:
-                toSend = (f'\x0312{get[3]}\x0F was last seen '
-                          f'\x0312{ago} ago\x0F [{get[1]} UTC], '
-                          f'doing \x0312{i.msg_nocmd} {get[0][8:]}\x0F')
-            else:
-                toSend = (f'\x0312{get[3]}\x0F was last seen '
-                          f'\x0312{ago} ago\x0F [{get[1]} UTC], '
-                          f'saying \x0312{get[0]}\x0F')
-            if args[0].lower() == i.nickname.lower():
-                # Check if the requested nickname is the user's nickname
-                toSend = (f'\x0312You\x0F were last seen \x0312{ago} ago\x0F'
-                          f' [{get[1]} UTC], saying \x0312{get[0]}\x0F')
-        else:
-            toSend = f"Sorry, I haven't seen \x0312{args[0]}\x0F around"
-        if args[0] == irc.var.nickname:
-            # Check if the requested nickname is the bot's nickname
-            toSend = "\x0304Who?\x0F"
-            self_nick = True
-        else:
-            self_nick = False
-        try:
-            # If 'get' check the channel the user was last seen and send a
-            # privmsg
-            if get[2] == i.channel or self_nick:
-                irc.privmsg(i.channel, toSend)
-            else:
-                toSend = f'{toSend} in \x0312{get[2]}\x0F'
-                irc.privmsg(i.channel, toSend)
-        except TypeError:
-            # if not 'get' just send a privmsg
-            irc.privmsg(i.channel, toSend)
+        if is_pm:  # PMs with the bot are not saved.
+            return
+
+        update(dbc, msgtarget, nickname, text)
+        db.commit()
+        return
+
+    argv = args.split()
+    argc = len(argv)
+
+    if not args:
+        rq_nick = nickname
+    elif (argc == 1 and len(args) <= 30):
+        rq_nick = argv[0]
+    else:
+        m = f"Usage: {prefix}{botcmd} <nickname>"
+        irc.out.notice(msgtarget, m)
+        return
+
+    # Check if the requested nickname is the bot's nickname
+    if rq_nick == irc.curr_nickname:
+        m = "\x0304Who?\x0F"
+        irc.out.notice(msgtarget, m)
+        update(dbc, msgtarget, nickname, text)
+        db.commit()
+        return
+
+    seen = fetch(dbc, rq_nick)
+
+    if not seen:
+        m = f"Sorry, I haven't seen \x0312{rq_nick}\x0F around"
+        irc.out.notice(msgtarget, m)
+        update(dbc, msgtarget, nickname, text)
+        db.commit()
+        return
+
+    # s_nickname = seen[0]
+    s_message = seen[1]
+    s_time = datetime.datetime.strptime(seen[2], "%Y-%m-%d %H:%M:%S")
+    s_channel = seen[3]
+
+    time_now = datetime.datetime.utcnow().replace(microsecond=0)
+    s_ago = time_now - s_time
+
+    ctcp_action = False
+    if "\x01ACTION " in s_message[:8]:
+        ctcp_action = True
+        s_message = s_message[8:]
+        if s_message[-1] == "\x01":
+            s_message = s_message[:-1]
+
+    m = "\x0312"
+
+    if is_ascii_cl(rq_nick, nickname):
+        m += "You\x0F were"
+    else:
+        m += f"{rq_nick}\x0F was"
+
+    m += f" last seen \x0312{s_ago} ago\x0F [{s_time} UTC]"
+
+    if ctcp_action:
+        m += ", doing"
+    else:
+        m += ", saying"
+
+    m += f" \x0312{s_message}\x0F"
+
+    if s_channel != msgtarget:
+        m += f" in \x0312{s_channel}"
+
+    irc.out.notice(msgtarget, m)
+
     # Update the database
-    if not i.channel == i.nickname:  # Avoid saving privmsges with the bot.
-        update(i.channel, i.nickname, i.msg, timestamp, dbc)
-        i.db[1].commit()
+    if is_pm:
+        return  # Avoid saving PMs.
+
+    update(dbc, msgtarget, nickname, text)
+    db.commit()
