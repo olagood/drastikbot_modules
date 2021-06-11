@@ -1,38 +1,36 @@
 # coding=utf-8
 
-# Point (karma) counting module for Drastikbot
+# Point (karma) counting module for drastikbot
 #
 # Give points/karma to users for performing certain actions
 
-'''
-Copyright (C) 2019 drastik.org
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
+# Copyright (C) 2019, 2021 drastik.org
+#
+# This file is part of drastikbot.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, version 3.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
 class Module:
-    def __init__(self):
-        self.commands = ["points"]
-        self.auto = True
-        self.manual = {
-            "desc": "Count a user's GNU/Linux points.",
-            "bot_commands": {
-                "points": lambda x: f"{x}points",
-                "info": "Show your total amount of points."
-            }
+    irc_commands = ["PRIVMSG"]
+    manual = {
+        "desc": "Count a user's GNU/Linux points.",
+        "bot_commands": {
+            "points": lambda x: f"{x}points",
+            "info": "Show your total amount of points."
         }
+    }
 
 
 def set_gnu_linux_points(dbc, nickname, points):
@@ -66,22 +64,36 @@ def gnu_linux_points_handler(dbc, nickname, mode=""):
 
 
 def main(i, irc):
-    dbc = i.db[0].cursor()
+    msgtarget = i.msg.get_msgtarget()
+    nickname = i.msg.get_nickname()
+    botcmd = i.msg.get_botcmd()
+    text = i.msg.get_text()
 
-    if i.cmd == "points":
-        gl_p = get_gnu_linux_points(dbc, i.nickname)
-        irc.privmsg(i.channel, f"GNU/Linux Points for {i.nickname}: {gl_p}")
+    dbc = i.db_disk.cursor()
 
-    if i.channel == i.nickname:
+    if botcmd == "points":
+        gl_p = get_gnu_linux_points(dbc, nickname)
+        m = f"GNU/Linux Points for {nickname}: {gl_p}"
+        irc.out.notice(msgtarget, m)
         return
 
-    last_nick = i.varget("last_nick", defval=irc.var.nickname)
-    if last_nick == i.nickname:
+    # Ignore PMs
+    if msgtarget == nickname:
         return
-    else:
-        i.varset("last_nick", i.nickname)
 
-    if "gnu/linux" in i.msg.lower() or "gnu+linux" in i.msg.lower():
-        gnu_linux_points_handler(dbc, i.nickname, mode="gnu")
-    elif "linux" in i.msg.lower() and "linux kernel" not in i.msg.lower():
-        gnu_linux_points_handler(dbc, i.nickname, mode="linux")
+    last_nick = i.varget("last_nick", defval=irc.curr_nickname)
+
+    # Only one sequential line is counted
+    if last_nick == nickname:
+        return
+
+    i.varset("last_nick", nickname)
+
+    text = text.lower()
+
+    if "gnu/linux" in text or "gnu+linux" in text or "gnu linux" in text:
+        gnu_linux_points_handler(dbc, nickname, mode="gnu")
+    elif "linux" in text and "kernel" not in text and "gnu" not in text:
+        gnu_linux_points_handler(dbc, nickname, mode="linux")
+
+    i.db_disk.commit()
