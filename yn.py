@@ -29,18 +29,20 @@ import random
 
 
 class Module:
-    def __init__(self):
-        self.commands = ['yn']
-        self.manual = {
-            "desc": "Flip a virtual coin",
-            "bot_commands": {
-                "yn": {"usage": lambda x: f"{x}yn"}
-            }
+    bot_commands = ['yn']
+    manual = {
+        "desc": "Flip a virtual coin",
+        "bot_commands": {
+            "yn": {"usage": lambda x: f"{x}yn"}
         }
+    }
 
 
 def main(i, irc):
-    irc.privmsg(
-        i.channel,
-        f"{i.nickname}: {'Yes' if random.randint(0, 1) == 1 else 'No'}."
+    msgtarget = i.msg.get_msgtarget()
+    nickname = i.msg.get_nickname()
+
+    irc.out.notice(
+        msgtarget,
+        f"{nickname}: {'Yes' if random.randint(0, 1) == 1 else 'No'}."
     )
