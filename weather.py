@@ -1,29 +1,29 @@
-#!/usr/bin/env python3
 # coding=utf-8
 
-# Weather Module for Drastikbot
+# Waether module for drastikbot2
 #
 # Provides weather information from http://wttr.in
 #
-# Depends:
-#   - requests      :: $ pip3 install requests
+# Depends
+# -------
+# pip: requests
 
-'''
-Copyright (C) 2018 drastik.org
+# Copyright (C) 2018, 2021 drastik.org
+#
+# This file is part of drastikbot.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, version 3.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
 
 import urllib.parse
 import requests
@@ -31,38 +31,91 @@ from user_auth import user_auth
 
 
 class Module:
-    def __init__(self):
-        self.commands = ['weather', 'weather_set', 'weather_auth']
-        self.manual = {
-            "desc": "Show weather information from http://wttr.in",
-            "bot_commands": {
-                "weather": {
-                    "usage": lambda x: (
-                        f"{x}weather <location / airport code / @domain"
-                        " / IP address / area code / GPS coordinates>"
-                    ),
-                    "info": "Get weather information."
-                },
-                "weather_set": {
-                    "usage": lambda x: (
-                        f"{x}weather_set <location / airport code / @domain"
-                        " / IP address / area code / GPS coordinates>"
-                    ),
-                    "info": (
-                        "Set your default location. If a location has been"
-                        " set, calling the weather command without arguments"
-                        " will return the weather for that location, otherwise"
-                        " you will be asked to provide a location. To unset"
-                        " your location use .weather_set without any"
-                        " arguements."
-                    )
-                },
-                "weather_auth": {
-                    "usage": lambda x: f"{x}weather_auth",
-                    "info": "Toggle NickServ authentication for weather_set"
-                }
+    bot_commands = ["weather", "weather_set", "weather_auth"]
+    manual = {
+        "desc": "Show weather information from http://wttr.in",
+        "bot_commands": {
+            "weather": {
+                "usage": lambda x: (
+                    f"{x}weather <location / airport code / @domain"
+                    " / IP address / area code / GPS coordinates>"
+                ),
+                "info": "Get weather information."
+            },
+            "weather_set": {
+                "usage": lambda x: (
+                    f"{x}weather_set <location / airport code / @domain"
+                    " / IP address / area code / GPS coordinates>"
+                ),
+                "info": (
+                    "Set your default location. If a location has been"
+                    " set, calling the weather command without arguments"
+                    " will return the weather for that location, otherwise"
+                    " you will be asked to provide a location. To unset"
+                    " your location use .weather_set without any"
+                    " arguements."
+                )
+            },
+            "weather_auth": {
+                "usage": lambda x: f"{x}weather_auth",
+                "info": "Toggle NickServ authentication for weather_set"
             }
         }
+    }
+
+
+# ====================================================================
+# Database Initializer: Called during bot startup
+# ====================================================================
+
+def db_init(i, _irc):
+    db = i.db_disk
+    dbc = db.cursor()
+
+    dbc.executescript("""
+    CREATE TABLE IF NOT EXISTS weather (
+        nickname TEXT COLLATE NOCASE PRIMARY KEY,
+        location TEXT,
+        auth INTEGER DEFAULT 0);
+    """)
+
+    db.commit()
+
+
+# ====================================================================
+# wttr.in
+# ====================================================================
+
+def wttr(location: str) -> str:
+    if location.lower() == "moon" or "moon@" in location.lower():
+        m = "This is not supported yet (add ,+US or ,+France for these cities)"
+        return m
+
+    location = urllib.parse.quote(location, safe="")
+    url = f"http://wttr.in/{location}?0Tm"
+    r = requests.get(url, timeout=10)
+
+    text = ''
+    for line in r.text.splitlines():
+        line = remove_ascii_art(line)
+        if line:
+            line = handler(line)
+            text += f'{line} | '
+
+    text = " ".join(text.split())  # Remove additional spaces.
+    text = text.lstrip("Rainfall: ")  # Remove 'Rainfall: ' from the front.
+
+    err_msg_1 = "ERROR: Unknown location:"
+    if err_msg_1 in text:
+        return f'\x0304wttr.in: Location "{location}" could not be found.'
+
+    err_msg_1 = "API key has reached calls per day allowed limit."
+    err_msg_2 = ("Sorry, we are running out of queries to the weather service"
+                 " at the moment.")
+    if err_msg_1 in text or err_msg_2 in text:
+        return "\x0304wttr.in: API call limit reached. Try again tomorrow."
+
+    return text
 
 
 # Helper functions:
@@ -270,43 +323,27 @@ art = (
 )
 
 
-def wttr(irc, channel, location):
-    if location.lower() == 'moon' or 'moon@' in location.lower():
-        irc.privmsg(channel, 'This is not supported yet '
-                    '(add ,+US or ,+France for these cities)')
-        return
+def remove_ascii_art(text):
+    for i in art:
+        text = text.replace(i, '')
 
-    location = urllib.parse.quote_plus(location)
-    url = f'http://wttr.in/{location}?0Tm'
-    r = requests.get(url, timeout=10).text.splitlines()
-    text = ''
-    for line in r:
-        for i in art:
-            line = line.replace(i, '')
-        if line:
-            line = handler(line)
-            text += f'{line} | '
+    return text
 
-    text = " ".join(text.split())  # Remove additional spaces.
-    text = text.lstrip("Rainfall: ")  # Remove 'Rainfall: ' from the front.
-    if "ERROR: Unknown location:" in text:
-        text = f'\x0304wttr.in: Location "{location}" could not be found.'
-    elif "API key has reached calls per day allowed limit." in text\
-         or ("Sorry, we are running out of queries to the weather service at "
-             "the moment.") in text:
-        text = "\x0304wttr.in: API call limit reached. Try again tomorrow."
 
-    irc.privmsg(channel, text)
-
+# ====================================================================
+# User settings
+# ====================================================================
 
 # Authentication
 
-def set_auth(i, irc, dbc):
-    if not user_auth(i, irc, i.nickname):
-        return f"{i.nickname}: You are not logged in with NickServ."
+def toggle_auth(dbc, nickname):
+    nickname = i.msg.get_nickname()
 
-    dbc.execute('SELECT auth FROM weather WHERE nickname=?;',
-                (i.nickname,))
+
+    dbc.execute("""
+    SELECT auth FROM weather WHERE nickname=?;
+    """, (nickname,))
+
     fetch = dbc.fetchone()
 
     try:
@@ -316,21 +353,24 @@ def set_auth(i, irc, dbc):
 
     if auth == 0:
         auth = 1
-        msg = f'{i.nickname}: weather: Enabled NickServ authentication.'
     elif auth == 1:
         auth = 0
-        msg = f'{i.nickname}: weather: Disabled NickServ authentication.'
 
-    dbc.execute(
-        "INSERT OR IGNORE INTO weather (nickname, auth) VALUES (?, ?);",
-        (i.nickname, auth))
-    dbc.execute("UPDATE weather SET auth=? WHERE nickname=?;",
-                (auth, i.nickname))
-    return msg
+    dbc.execute("""
+    INSERT OR IGNORE INTO weather (nickname, auth) VALUES (?, ?);
+    """, (nickname, auth))
+
+    dbc.execute("""
+    UPDATE weather SET auth=? WHERE nickname=?;
+    """, (auth, nickname))
+
+    return auth
 
 
 def get_auth(i, irc, dbc):
-    dbc.execute('SELECT auth FROM weather WHERE nickname=?;', (i.nickname,))
+    nickname = i.msg.get_nickname()
+
+    dbc.execute('SELECT auth FROM weather WHERE nickname=?;', (nickname,))
     fetch = dbc.fetchone()
     try:
         auth = fetch[0]
@@ -339,62 +379,124 @@ def get_auth(i, irc, dbc):
 
     if auth == 0:
         return True
-    elif auth == 1 and user_auth(i, irc, i.nickname):
+    elif auth == 1 and user_auth(i, irc, nickname):
         return True
     else:
         return False
 
 
-def set_location(i, irc, dbc, location):
-    if not get_auth(i, irc, dbc):
-        return f"{i.nickname}: weather: NickServ authentication is required."
-    dbc.execute(
-        '''INSERT OR IGNORE INTO weather (nickname, location)
-        VALUES (?, ?);''', (i.nickname, location))
-    dbc.execute('''UPDATE weather SET location=? WHERE nickname=?;''',
-                (location, i.nickname))
-    return f'{i.nickname}: weather: Your location was set to "{location}"'
+# Location
+
+def set_location(dbc, nickname, location):
+    dbc.execute("""
+    INSERT OR IGNORE INTO weather (nickname, location) VALUES (?, ?);
+    """, (nickname, location))
+
+    dbc.execute("""
+    UPDATE weather SET location=? WHERE nickname=?;
+    """, (location, nickname))
 
 
 def get_location(dbc, nickname):
     try:
-        dbc.execute(
-            'SELECT location FROM weather WHERE nickname=?;', (nickname,))
+        dbc.execute("""
+        SELECT location FROM weather WHERE nickname=?;
+        """, (nickname,))
         return dbc.fetchone()[0]
     except Exception:
         return False
 
 
+# ====================================================================
+# IRC Callbacks
+# ====================================================================
+
+def weather(i, irc):
+    msgtarget = i.msg.get_msgtarget()
+    nickname = i.msg.get_nickname()
+    botcmd = i.msg.get_botcmd()
+    prefix = i.msg.get_botcmd_prefix()
+    args = i.msg.get_args()
+
+    db = i.db_disk
+    dbc = db.cursor()
+
+    if args:
+        m = wttr(args)
+        irc.out.notice(msgtarget, m)
+        return
+
+    location = get_location(dbc, nickname)
+    if location:
+        m = wttr(location)
+        irc.out.notice(msgtarget, m)
+        return
+
+    m = (f"Usage: {prefix}{botcmd} <Location / Airport code / @domain /"
+         " IP address / Area code / GPS coordinates>")
+    irc.out.notice(msgtarget, m)
+
+
+def weather_set(i, irc):
+    msgtarget = i.msg.get_msgtarget()
+    nickname = i.msg.get_nickname()
+    args = i.msg.get_args()
+
+    db = i.db_disk
+    dbc = db.cursor()
+
+    if not get_auth(i, irc, dbc):
+        m = f"{nickname}: weather: NickServ authentication is required."
+        irc.out.notice(msgtarget, m)
+        return
+
+    set_location(dbc, nickname, args)
+    db.commit()
+
+    m = f'{nickname}: weather: Your location was set to "{location}"'
+    irc.out.notice(msgtarget, m)
+
+
+def weather_auth(i, irc):
+    msgtarget = i.msg.get_msgtarget()
+    nickname = i.msg.get_nickname()
+    args = i.msg.get_args()
+
+    db = i.db_disk
+    dbc = db.cursor()
+
+    if not user_auth(i, irc, nickname):
+        m =  f"{nickname}: You are not logged in with NickServ."
+        irc.out.notice(msgtarget, m)
+        return
+
+    new_auth = toggle_auth(dbc, nickname)
+    db.commit()
+
+    if new_auth == 1:
+        m = f'{nickname}: weather: Enabled NickServ authentication.'
+    elif new_auth == 2:
+        m = f'{nickname}: weather: Disabled NickServ authentication.'
+
+    irc.out.notice(msgtarget, m)
+
+
+# ====================================================================
+# Main
+# ====================================================================
+
+dispatch = {
+    "__STARTUP": db_init,
+    "weather": weather,
+    "weather_set": weather_set,
+    "weather_auth": weather_auth
+}
+
+
 def main(i, irc):
-    dbc = i.db[1].cursor()
-
     try:
-        dbc.execute(
-            '''CREATE TABLE IF NOT EXISTS weather (nickname TEXT COLLATE NOCASE
-            PRIMARY KEY, location TEXT, auth INTEGER DEFAULT 0);''')
-    except Exception:
-        # sqlite3.OperationalError: cannot commit - no transaction is active
-        pass
+        botcmd = i.msg.get_botcmd()
+    except AttributeError:
+        botcmd = i.msg.get_command()  # __STARTUP
 
-    if "weather" == i.cmd:
-
-        if not i.msg_nocmd:
-            location = get_location(dbc, i.nickname)
-            if location:
-                wttr(irc, i.channel, location)
-            else:
-                msg = (f'Usage: {i.cmd_prefix}{i.cmd} '
-                       '<Location / Airport code / @domain / '
-                       'IP address / Area code / GPS coordinates>')
-                irc.privmsg(i.channel, msg)
-        else:
-            wttr(irc, i.channel, i.msg_nocmd)
-
-    elif "weather_set" == i.cmd:
-        ret = set_location(i, irc, dbc, i.msg_nocmd)
-        i.db[1].commit()
-        irc.privmsg(i.channel, ret)
-    elif "weather_auth" == i.cmd:
-        ret = set_auth(i, irc, dbc)
-        i.db[1].commit()
-        irc.privmsg(i.channel, ret)
+    dispatch[botcmd](i, irc)
