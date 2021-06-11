@@ -2,6 +2,7 @@
 # coding=utf-8
 
 # Quotes from various historical versions of the Linux kernel
+# Source: http://www.schwarzvogel.de/software/misc.html
 
 '''
 Copyright (C) 2021 Flisk <flisk@fastmail.de>
@@ -25,17 +26,16 @@ import random
 
 
 class Module:
-    def __init__(self):
-        self.commands = ['kernel']
-        self.manual = {
-            "desc": (
-                "Post quotes from various historical versions of the"
-                " Linux kernel http://www.schwarzvogel.de/software/misc.html"
-            ),
-            "bot_commands": {
-                "usage": lambda x: f"{x}kernel"
-            }
+    bot_commands = ["kernel"]
+    manual = {
+        "desc": (
+            "Post quotes from various historical versions of the"
+            " Linux kernel http://www.schwarzvogel.de/software/misc.html"
+        ),
+        "bot_commands": {
+            "usage": lambda x: f"{x}kernel"
         }
+    }
 
 
 # Taken from the Kernelcookies fortune file curated by Tobias
@@ -294,5 +294,8 @@ talk = [
 
 
 def main(i, irc):
-    msg = f"{i.nickname}: {random.SystemRandom().choice(talk)}"
-    irc.privmsg(i.channel, msg)
+    msgtarget = i.msg.get_msgtarget()
+    nickname = i.msg.get_nickname()
+
+    msg = f"{nickname}: {random.SystemRandom().choice(talk)}"
+    irc.out.notice(msgtarget, msg)
