@@ -7,7 +7,7 @@
 #   - beautifulsoup :: $ pip3 install beautifulsoup4
 
 '''
-Copyright (C) 2017-2020 drastik.org
+Copyright (C) 2017-2021 drastik.org
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published
@@ -305,21 +305,9 @@ def get_title(u):
 
 
 def main(i, irc):
-    # OLD METHOD FOR CLEANING UP THE STRING
-    # -------------------------------------
-    # - Raw undecoded message clean up.
-    # Remove /r/n and whitespace
-    #msg = i.msg_raw.strip()
-    # Convert the bytes to a string,
-    # split the irc commands from the text message,
-    # remove ' character from the end of the string.
-    #msg = str(msg).split(' :', 1)[1][:-1]
-    # Remove all IRC formatting codes
-    #msg = remove_formatting(msg)
-    # msg = info[2]
-
     msgtarget = i.msg.get_msgtarget()
-    text = i.msg.get_text()
+    text = i.msg.get_message().strip()
+    text = str(text).split(' :', 1)[1][:-1]
     text = remove_formatting(text)
 
     prev_u = set()  # Already visited URLs, used to avoid spamming.
