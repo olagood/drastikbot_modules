@@ -462,7 +462,11 @@ def weather_set(i, irc):
     set_location(dbc, nickname, args)
     db.commit()
 
-    m = f'{nickname}: weather: Your location was set to "{location}"'
+    if not args:
+        m = f"{nickname}: weather: Your location was unset"
+    else:
+        m = f'{nickname}: weather: Your location was set to "{args}"'
+
     irc.out.notice(msgtarget, m)
 
 
