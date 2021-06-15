@@ -28,10 +28,11 @@
 import urllib.parse
 import requests
 from user_auth import user_auth
-
+from admin import is_bot_owner
 
 class Module:
-    bot_commands = ["weather", "weather_set", "weather_auth"]
+    bot_commands = ["weather", "weather_set", "weather_auth",
+                    "weather-initialize"]
     manual = {
         "desc": "Show weather information from http://wttr.in",
         "bot_commands": {
@@ -80,6 +81,13 @@ def db_init(i, _irc):
     """)
 
     db.commit()
+
+
+def weather_initialize(i, irc):
+    nickname = i.msg.get_nickname()
+    if is_bot_owner(irc, nickname):
+        irc.out.notice(nickname, "weather: database initialized")
+        db_init(i, irc)
 
 
 # ====================================================================
@@ -489,7 +497,8 @@ dispatch = {
     "__STARTUP": db_init,
     "weather": weather,
     "weather_set": weather_set,
-    "weather_auth": weather_auth
+    "weather_auth": weather_auth,
+    "weather-initialize": weather_initialize
 }
 
 
