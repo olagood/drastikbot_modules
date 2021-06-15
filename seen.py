@@ -30,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import datetime
 
 from dbothelper import is_ascii_cl
+from admin import is_allowed
 
 
 class Module:
@@ -95,7 +96,7 @@ def init(db):
 def main(i, irc):
     db = i.db_disk
 
-    # Database initialization
+    # Database initialization on startup
     if i.msg.is_command("__STARTUP"):
         init(db)
         return
@@ -107,6 +108,12 @@ def main(i, irc):
     prefix = i.msg.get_botcmd_prefix()
     args = i.msg.get_args()
     text = i.msg.get_text()
+
+    # Database initialization by command
+    if i.msg.is_botcmd("seen-initialize") and is_bot_owner(irc, nickname):
+        irc.out.notice(nickname, "seen: database initialized")
+        init(db)
+        return
 
     # Save user messages.
     if not i.msg.is_botcmd("seen"):
