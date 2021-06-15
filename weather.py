@@ -31,6 +31,7 @@ from user_auth import user_auth
 from admin import is_bot_owner
 
 class Module:
+    startup = True
     bot_commands = ["weather", "weather_set", "weather_auth",
                     "weather-initialize"]
     manual = {
