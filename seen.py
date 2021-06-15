@@ -50,7 +50,8 @@ class Module:
     }
 
 
-def update(dbc, channel, nickname, message):
+def update(db, channel, nickname, message):
+    dbc = db.cursor()
     timestamp = str(datetime.datetime.utcnow().replace(microsecond=0))
 
     sql = """
@@ -64,9 +65,11 @@ def update(dbc, channel, nickname, message):
         WHERE nick=?;
     """
     dbc.execute(sql, (message, timestamp, channel, nickname))
+    db.commit()
 
 
-def fetch(dbc, nickname):
+def fetch(db, nickname):
+    dbc = db.cursor()
     sql = """
         SELECT nick, msg, time, channel
         FROM seen WHERE nick=?;
@@ -75,7 +78,8 @@ def fetch(dbc, nickname):
     return dbc.fetchone()
 
 
-def init(dbc):
+def init(db):
+    dbc = db.cursor()
     sql = """
         CREATE TABLE IF NOT EXISTS seen (
                nick TEXT COLLATE NOCASE PRIMARY KEY,
@@ -85,16 +89,15 @@ def init(dbc):
         );
     """
     dbc.execute(sql)
+    db.commit()
 
 
 def main(i, irc):
     db = i.db_disk
-    dbc = db.cursor()
 
     # Database initialization
     if i.msg.is_command("__STARTUP"):
-        init(dbc)
-        db.commit()
+        init(db)
         return
 
     msgtarget = i.msg.get_msgtarget()
@@ -111,8 +114,7 @@ def main(i, irc):
         if is_pm:  # PMs with the bot are not saved.
             return
 
-        update(dbc, msgtarget, nickname, text)
-        db.commit()
+        update(db, msgtarget, nickname, text)
         return
 
     argv = args.split()
@@ -131,17 +133,15 @@ def main(i, irc):
     if rq_nick == irc.curr_nickname:
         m = "\x0304Who?\x0F"
         irc.out.notice(msgtarget, m)
-        update(dbc, msgtarget, nickname, text)
-        db.commit()
+        update(db, msgtarget, nickname, text)
         return
 
-    seen = fetch(dbc, rq_nick)
+    seen = fetch(db, rq_nick)
 
     if not seen:
         m = f"Sorry, I haven't seen \x0312{rq_nick}\x0F around"
         irc.out.notice(msgtarget, m)
-        update(dbc, msgtarget, nickname, text)
-        db.commit()
+        update(db, msgtarget, nickname, text)
         return
 
     # s_nickname = seen[0]
@@ -184,5 +184,4 @@ def main(i, irc):
     if is_pm:
         return  # Avoid saving PMs.
 
-    update(dbc, msgtarget, nickname, text)
-    db.commit()
+    update(db, msgtarget, nickname, text)
