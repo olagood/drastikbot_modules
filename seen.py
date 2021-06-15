@@ -30,7 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import datetime
 
 from dbothelper import is_ascii_cl
-from admin import is_allowed
+from admin import is_bot_owner
 
 
 class Module:
