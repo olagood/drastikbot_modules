@@ -398,7 +398,7 @@ def quote_pm(i, irc, dbc):
         return
 
     if argc == 1:
-        channel = argv
+        channel = argv[0]
         query = False
     else:
         channel, query = argv
