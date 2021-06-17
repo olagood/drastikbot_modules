@@ -180,7 +180,7 @@ def main(i, irc):
     msgtarget = i.msg.get_msgtarget()
     args = i.msg.get_args()
 
-    query = urllib.parse.quote_plus(args)
+    query = urllib.parse.quote(args, safe="")
     try:
         m = output(yt_search(query))
     except Exception:
