@@ -27,12 +27,14 @@ import requests
 
 from irc.message import remove_formatting
 from admin import is_allowed
+from admin import is_bot_owner
 
 
 class Module:
     startup = True
     bot_commands = ["quote", "quote-search", "quote-add", "quote-del",
-                    "quote-match", "quote-list-mentioned"]
+                    "quote-match", "quote-list-mentioned",
+                    "quote-initialize"]
     manual = {
         "desc": "Saves user quotes and posts them when requested.",
         "bot_commands": {
@@ -138,6 +140,13 @@ def db_init(dbc):
     END;
 
     """)
+
+
+def quote_initialize(i, irc, dbc):
+    nickname = i.msg.get_nickname()
+    if is_bot_owner(irc, nickname):
+        db_init(dbc)
+        irc.out.notice(nickname, "quote: database initialized")
 
 
 # ====================================================================
@@ -692,6 +701,7 @@ def quote_list_mentioned(i, irc, dbc):
 
 dispatch = {
     "__STARTUP": lambda i, irc, dbc: db_init(dbc),
+    "quote-initialize": quote_initialize,
     "quote": quote,
     "quote-search": quote_search,
     "quote-match": quote_match,
@@ -707,7 +717,7 @@ def main(i, irc):
     except AttributeError:
         botcmd = i.msg.get_command()  # __STARTUP
 
-    db = i.db_memory
+    db = i.db_disk
     dbc = db.cursor()
 
     dispatch[botcmd](i, irc, dbc)
