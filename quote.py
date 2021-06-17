@@ -392,7 +392,7 @@ def quote_pm(i, irc, dbc):
     argv = args.split(" ", 1)
     argc = len(argv)
 
-    if not args or argc < 2:
+    if not args:
         m = f"{logo}: Usage: {prefix}{botcmd} <#channel> <nickname/id/text>"
         irc.out.notice(msgtarget, m)
         return
@@ -400,7 +400,7 @@ def quote_pm(i, irc, dbc):
     channel, query = argv
 
     if not channel[:1] in irc.chantypes:
-        m = f"{logo}: Usage: {prefix}{botcmd} <#channel> <nickname/id/text>"
+        m = f"{logo}: Enter the channel with its prefix: #channel"
         irc.out.notice(msgtarget, m)
         return
 
