@@ -67,13 +67,19 @@ def main(i, irc):
     msgtarget = i.msg.get_msgtarget()
     nickname = i.msg.get_nickname()
     botcmd = i.msg.get_botcmd()
+    args = i.msg.get_args()
     text = i.msg.get_text()
 
     dbc = i.db_disk.cursor()
 
     if botcmd == "points":
-        gl_p = get_gnu_linux_points(dbc, nickname)
-        m = f"GNU/Linux Points for {nickname}: {gl_p}"
+        if args:
+            target = args
+        else:
+            target = nickname
+
+        gl_p = get_gnu_linux_points(dbc, target)
+        m = f"GNU/Linux Points for {target}: {gl_p}"
         irc.out.notice(msgtarget, m)
         return
 
