@@ -397,7 +397,11 @@ def quote_pm(i, irc, dbc):
         irc.out.notice(msgtarget, m)
         return
 
-    channel, query = argv
+    if argc == 1:
+        channel = argv
+        query = False
+    else:
+        channel, query = argv
 
     if not channel[:1] in irc.chantypes:
         m = f"{logo}: Enter the channel with its prefix: #channel"
