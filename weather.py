@@ -102,7 +102,10 @@ def wttr(location: str) -> str:
 
     location = urllib.parse.quote(location, safe="")
     url = f"http://wttr.in/{location}?0Tm"
-    r = requests.get(url, timeout=10)
+    try:
+        r = requests.get(url, timeout=30)
+    except requests.exceptions.ReadTimeout:
+        return f"weather: Read timeout error. Please try again later."
 
     text = ''
     for line in r.text.splitlines():
