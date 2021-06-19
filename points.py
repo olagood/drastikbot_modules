@@ -33,34 +33,42 @@ class Module:
     }
 
 
-def set_gnu_linux_points(dbc, nickname, points):
-    dbc.execute("CREATE TABLE IF NOT EXISTS points_gnu_linux "
-                "(nickname TEXT COLLATE NOCASE, points INTEGER);")
-    dbc.execute("INSERT OR IGNORE INTO points_gnu_linux VALUES (?, ?);",
-                (nickname, points))
-    dbc.execute("UPDATE points_gnu_linux SET points=? WHERE nickname=?;",
-                (points, nickname))
+def set_gnu_linux_points(db, nickname, points):
+    dbc = db.cursor()
+    try:
+        dbc.execute("CREATE TABLE IF NOT EXISTS points_gnu_linux "
+                    "(nickname TEXT COLLATE NOCASE, points INTEGER);")
+        dbc.execute("INSERT OR IGNORE INTO points_gnu_linux VALUES (?, ?);",
+                    (nickname, points))
+        dbc.execute("UPDATE points_gnu_linux SET points=? WHERE nickname=?;",
+                    (points, nickname))
+        db.commit()
+    finally:
+        dbc.close()
 
 
-def get_gnu_linux_points(dbc, nickname):
+def get_gnu_linux_points(db, nickname):
+    dbc = db.cursor()
     try:
         dbc.execute("SELECT points FROM points_gnu_linux WHERE nickname=?;",
                     (nickname,))
         return dbc.fetchone()[0]
     except Exception:
         return 0
+    finally:
+        dbc.close()
 
 
-def gnu_linux_points_handler(dbc, nickname, mode=""):
+def gnu_linux_points_handler(db, nickname, mode=""):
     try:
-        p = get_gnu_linux_points(dbc, nickname)
+        p = get_gnu_linux_points(db, nickname)
     except Exception:
         p = 0
     if "gnu" == mode:
         p += 1
     elif "linux" == mode:
         p -= 1
-    set_gnu_linux_points(dbc, nickname, p)
+    set_gnu_linux_points(db, nickname, p)
 
 
 def main(i, irc):
@@ -70,7 +78,7 @@ def main(i, irc):
     args = i.msg.get_args()
     text = i.msg.get_text()
 
-    dbc = i.db_disk.cursor()
+    db = i.db_disk
 
     if botcmd == "points":
         if args:
@@ -78,7 +86,7 @@ def main(i, irc):
         else:
             target = nickname
 
-        gl_p = get_gnu_linux_points(dbc, target)
+        gl_p = get_gnu_linux_points(db, target)
         m = f"GNU/Linux Points for {target}: {gl_p}"
         irc.out.notice(msgtarget, m)
         return
@@ -98,8 +106,6 @@ def main(i, irc):
     text = text.lower()
 
     if "gnu/linux" in text or "gnu+linux" in text or "gnu linux" in text:
-        gnu_linux_points_handler(dbc, nickname, mode="gnu")
+        gnu_linux_points_handler(db, nickname, mode="gnu")
     elif "linux" in text and "kernel" not in text and "gnu" not in text:
-        gnu_linux_points_handler(dbc, nickname, mode="linux")
-
-    i.db_disk.commit()
+        gnu_linux_points_handler(db, nickname, mode="linux")
