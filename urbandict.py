@@ -46,7 +46,7 @@ logo = '\x0300,01Urban\x0F\x0308,01Dictionary\x0F'
 
 def ud(query, res):
     u = f'http://api.urbandictionary.com/v0/define?term={query}'
-    r = requests.get(u, timeout=5)
+    r = requests.get(u, timeout=30)
     j = r.json()['list'][res]
     word = j['word']
     definition = p_truncate(j['definition'], msg_len, 71, True)
@@ -105,6 +105,8 @@ def main(i, irc):
                f" | \x0304-{u[5]}\x0F"
                f" | \x02Link:\x0F {u[6]}")
     except IndexError:
-        rpl = (f"{logo}: No definition was found for \x02{q}\x0F")
+        rpl = f"{logo}: No definition was found for \x02{q}\x0F"
+    except requests.exceptions.ReadTimeout:
+        rpl = f"{logo}: Read timeout error. Please try again later."
 
     irc.out.notice(msgtarget, rpl)
