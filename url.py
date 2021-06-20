@@ -298,7 +298,11 @@ def _get_title_from_title(title, data):
 
 
 def get_title(u):
-    title, data = _get_title_from_host(u)
+    try:
+        title, data = _get_title_from_host(u)
+    except AttributeError:  # `u' is not a URL and the host is None.
+        return ""
+
     if data:
         title = _get_title_from_title(title, data)
     return title
