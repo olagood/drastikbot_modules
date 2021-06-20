@@ -303,7 +303,7 @@ def db_find_random_fts5(dbc, query, channel):
         FROM quote_quotes AS q
         INNER JOIN quote_channels AS c ON q.id = c.quote_id
         INNER JOIN quote_fts5 AS f ON f.id = q.id
-        WHERE c.channel = ? AND f.quote MATCH ?
+        WHERE c.channel = ? AND f.quote = ?
         ORDER BY RANDOM()
         LIMIT 1;
     """
@@ -317,7 +317,7 @@ def db_find_channel_fts5(dbc, query, channel, limit=10):
         FROM quote_quotes AS q
         INNER JOIN quote_channels AS c ON q.id = c.quote_id
         INNER JOIN quote_fts5 AS f ON f.id = q.id
-        WHERE c.channel = ? AND f.quote MATCH ?
+        WHERE c.channel = ? AND f.quote = ?
         LIMIT ?;
     """
     dbc.execute(sql, (channel, query, limit))
@@ -330,7 +330,7 @@ def db_find_fts5(dbc, query, limit=10):
         FROM quote_quotes AS q
         INNER JOIN quote_channels AS c ON q.id = c.quote_id
         INNER JOIN quote_fts5 AS f ON f.id = q.id
-        WHERE f.quote MATCH ?
+        WHERE f.quote = ?
         LIMIT ?;
     """
     dbc.execute(sql, (query, limit))
