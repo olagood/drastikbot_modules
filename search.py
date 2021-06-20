@@ -98,6 +98,10 @@ def google(args):
     soup = bs4.BeautifulSoup(r.text, parser)
 
     results_l = soup.find("div", {"id": "search"}).find_all("a")
+    if not results_l:
+        return ("google",
+                f"Your search - {args} - did not match any documents.")
+
     result = results_l[0].get("href")
 
     return "google", result
