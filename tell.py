@@ -61,8 +61,8 @@ def find(nick, irc, dbc):
                     'WHERE receiver=?;', (nick,))
         fetch = dbc.fetchall()
         for i in fetch:
-            irc.out.notice(nick, f'\x0302{i[2]} [{i[0]} UTC]:\x0F')
-            irc.out.notice(nick, i[1])
+            irc.out.privmsg(nick, f'\x0302{i[2]} [{i[0]} UTC]:\x0F')
+            irc.out.privmsg(nick, i[1])
         dbc.execute('''DELETE FROM tell WHERE receiver=?;''', (nick,))
         # Delete messages older than 3600 * 24 * 30 * 3 seconds.
         dbc.execute('''DELETE FROM tell WHERE
