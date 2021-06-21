@@ -303,11 +303,15 @@ def db_find_random_fts5(dbc, query, channel):
         FROM quote_quotes AS q
         INNER JOIN quote_channels AS c ON q.id = c.quote_id
         INNER JOIN quote_fts5 AS f ON f.id = q.id
-        WHERE c.channel = ? AND f.quote = ?
+        WHERE c.channel = ? AND f.quote MATCH ?
         ORDER BY RANDOM()
         LIMIT 1;
     """
-    dbc.execute(sql, (channel, query))
+    # Make the query an FTS5 string
+    q = query.replace('"', '')
+    q = f'"{q}"'
+
+    dbc.execute(sql, (channel, q))
     return dbc.fetchone()
 
 
@@ -317,10 +321,14 @@ def db_find_channel_fts5(dbc, query, channel, limit=10):
         FROM quote_quotes AS q
         INNER JOIN quote_channels AS c ON q.id = c.quote_id
         INNER JOIN quote_fts5 AS f ON f.id = q.id
-        WHERE c.channel = ? AND f.quote = ?
+        WHERE c.channel = ? AND f.quote MATCH ?
         LIMIT ?;
     """
-    dbc.execute(sql, (channel, query, limit))
+    # Make the query an FTS5 string
+    q = query.replace('"', '')
+    q = f'"{q}"'
+
+    dbc.execute(sql, (channel, q, limit))
     return dbc.fetchall()
 
 
@@ -330,10 +338,14 @@ def db_find_fts5(dbc, query, limit=10):
         FROM quote_quotes AS q
         INNER JOIN quote_channels AS c ON q.id = c.quote_id
         INNER JOIN quote_fts5 AS f ON f.id = q.id
-        WHERE f.quote = ?
+        WHERE f.quote MATCH ?
         LIMIT ?;
     """
-    dbc.execute(sql, (query, limit))
+    # Make the query an FTS5 string
+    q = query.replace('"', '')
+    q = f'"{q}"'
+
+    dbc.execute(sql, (q, limit))
     return dbc.fetchall()
 
 
