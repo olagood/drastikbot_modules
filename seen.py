@@ -93,36 +93,12 @@ def init(db):
     db.commit()
 
 
-def main(i, irc):
-    db = i.db_disk
-
-    # Database initialization on startup
-    if i.msg.is_command("__STARTUP"):
-        init(db)
-        return
-
+def seen(i, irc, db):
     msgtarget = i.msg.get_msgtarget()
     nickname = i.msg.get_nickname()
-    is_pm = i.msg.is_pm()
     botcmd = i.msg.get_botcmd()
     prefix = i.msg.get_botcmd_prefix()
     args = i.msg.get_args()
-    text = i.msg.get_text()
-
-    # Database initialization by command
-    if i.msg.is_botcmd("seen-initialize") and is_bot_owner(irc, nickname):
-        irc.out.notice(nickname, "seen: database initialized")
-        init(db)
-        return
-
-    # Save user messages.
-    if not i.msg.is_botcmd("seen"):
-
-        if is_pm:  # PMs with the bot are not saved.
-            return
-
-        update(db, msgtarget, nickname, text)
-        return
 
     argv = args.split()
     argc = len(argv)
@@ -140,7 +116,6 @@ def main(i, irc):
     if rq_nick == irc.curr_nickname:
         m = "\x0304Who?\x0F"
         irc.out.notice(msgtarget, m)
-        update(db, msgtarget, nickname, text)
         return
 
     seen = fetch(db, rq_nick)
@@ -148,7 +123,6 @@ def main(i, irc):
     if not seen:
         m = f"Sorry, I haven't seen \x0312{rq_nick}\x0F around"
         irc.out.notice(msgtarget, m)
-        update(db, msgtarget, nickname, text)
         return
 
     # s_nickname = seen[0]
@@ -187,8 +161,30 @@ def main(i, irc):
 
     irc.out.notice(msgtarget, m)
 
-    # Update the database
-    if is_pm:
-        return  # Avoid saving PMs.
 
-    update(db, msgtarget, nickname, text)
+def main(i, irc):
+    db = i.db_disk
+
+    # Database initialization on startup
+    if i.msg.is_command("__STARTUP"):
+        init(db)
+        return
+
+    msgtarget = i.msg.get_msgtarget()
+    nickname = i.msg.get_nickname()
+    is_pm = i.msg.is_pm()
+    text = i.msg.get_text()
+
+    # Database initialization by command
+    if i.msg.is_botcmd("seen-initialize") and is_bot_owner(irc, nickname):
+        irc.out.notice(nickname, "seen: database initialized")
+        init(db)
+        return
+
+    # Handle the `seen' command, if any.
+    if i.msg.is_botcmd("seen"):
+        seen(i, irc, db)
+
+    # Save user messages.
+    if not is_pm:  # PMs with the bot are not saved.
+        update(db, msgtarget, nickname, text)
