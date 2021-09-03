@@ -33,10 +33,13 @@ import urllib.parse
 from dbot_tools import p_truncate
 
 
+def usage(prefix, command):
+    return (f"{prefix}{command} <article> [--full] [--search]"
+            " [--sections] [-l <lang>] [--resuult <num>]")
+
+
 class Module:
     bot_commands = ["wikipedia", "wiki", "w"]
-    usage = lambda x, y: (f"{x}{y} <article> [--full] [--search]"
-                          " [--sections] [-l <lang>] [--resuult <num>]")
     info = ("--info: Get the full section in a query."
             " / --search: Search and get the results in a query."
             " / --sections: Get all the sections of an article in a query."
