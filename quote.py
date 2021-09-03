@@ -688,7 +688,8 @@ def quote_list_mentioned(i, irc, dbc):
     q = db_get_quotes_for_quotee(dbc, nickname)
     if q is not None:
         for i in q:
-            acc += "f[0] | f[1] | f[2] | f[3] | f[4] | f[5] | f[6]\n"
+            acc += (f"{i[0]} | {i[1]} | {i[2]} | {i[3]} | {i[4]} | {i[5]}"
+                    f" | {i[6]}\n")
 
     acc += "\n\n-- Quotes that you added: \n\n"
 
@@ -696,7 +697,8 @@ def quote_list_mentioned(i, irc, dbc):
     q = db_get_quotes_for_added_by(dbc, nickname)
     if q is not None:
         for i in q:
-            acc += "f[0] | f[1] | f[2] | f[3] | f[4] | f[5] | f[6]\n"
+            acc += (f"{i[0]} | {i[1]} | {i[2]} | {i[3]} | {i[4]} | {i[5]}"
+                    f" | {i[6]}\n")
 
     acc += "\n\n-- Quotes that include your nickname: \n\n"
 
@@ -704,7 +706,8 @@ def quote_list_mentioned(i, irc, dbc):
     q = db_find_fts5(dbc, nickname, limit=-1)
     if q is not None:
         for i in q:
-            acc += "f[0] | f[1] | f[2] | f[3] | f[4] | f[5] | f[6]\n"
+            acc += (f"{i[0]} | {i[1]} | {i[2]} | {i[3]} | {i[4]} | {i[5]}"
+                    f" | {i[6]}\n")
 
     pomf_url = pomf_plaintext_upload(acc)
     m = f"{logo}: Your quotes can be found here: {pomf_url}"
