@@ -82,6 +82,7 @@ sed_cmd = re.compile('^s/.*/.*')
 
 
 def main(i, irc):
+    nickname = i.msg.get_nickname()
     msgtarget = i.msg.get_msgtarget()
     text = i.msg.get_text()
 
@@ -124,10 +125,16 @@ def main(i, irc):
 
     n = 1
     while n <= 50:
+        flags = 0
         if 'i' in sed_args[3]:
-            db_search = re.search(sed_args[1], msglist[-n], re.I)
-        else:
-            db_search = re.search(sed_args[1], msglist[-n])
+            flags |= re.I
+
+        try:
+            db_search = re.search(sed_args[1], msglist[-n], flags)
+        except re.error as e:  # Invalid pattern given
+            irc.out.notice(nickname, f"sed: regexp error: {e}")
+            return
+
         if db_search:
             if goback:
                 # Check if the goback command was issued.
@@ -143,14 +150,14 @@ def main(i, irc):
     if a:
         if "\x01ACTION " in msglist[-a][:8]:
             msg_len = irc.msg_len - 9 - len(msgtarget) - 10 - 2
-            sed_out = call_sed(msglist[-a][8:], sed_args)
-            sed_out = sed_out.rstrip('\n').replace('\x01', "").replace('\ca', "")
+            sed_out = call_sed(msglist[-a][8:], sed_args).strip()
+            sed_out = sed_out.rstrip('\n').replace('\x01', "")
             sed_out = p_truncate(sed_out, msg_len, 98, True)
             irc.out.privmsg(msgtarget, f"\x01ACTION {sed_out}\x01")
         else:
             msg_len = irc.msg_len - 9 - len(msgtarget) - 2
             sed_out = call_sed(msglist[-a], sed_args).strip()
-            sed_out = sed_out.rstrip('\n').replace('\x01', "").replace('\ca', "")
+            sed_out = sed_out.rstrip('\n').replace('\x01', "")
             sed_out = p_truncate(sed_out, msg_len, 98, True)
             irc.out.privmsg(msgtarget, sed_out)
 
