@@ -52,21 +52,22 @@ class Module:
 
 
 def update(db, channel, nickname, message):
-    dbc = db.cursor()
     timestamp = str(datetime.datetime.utcnow().replace(microsecond=0))
 
-    sql = """
-        INSERT OR IGNORE INTO seen (nick, msg, time, channel)
-        VALUES (?, ?, ?, ?);
-    """
-    dbc.execute(sql, (nickname, message, timestamp, channel))
+    with db:
+        dbc = db.cursor()
 
-    sql = """
-        UPDATE seen SET msg=?, time=?, channel=?
-        WHERE nick=?;
-    """
-    dbc.execute(sql, (message, timestamp, channel, nickname))
-    db.commit()
+        sql = """
+            INSERT OR IGNORE INTO seen (nick, msg, time, channel)
+            VALUES (?, ?, ?, ?);
+        """
+        dbc.execute(sql, (nickname, message, timestamp, channel))
+
+        sql = """
+            UPDATE seen SET msg=?, time=?, channel=?
+            WHERE nick=?;
+        """
+        dbc.execute(sql, (message, timestamp, channel, nickname))
 
 
 def fetch(db, nickname):
