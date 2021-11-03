@@ -41,7 +41,7 @@ parser = 'html.parser'
 user_agent = "w3m/0.52"
 accept_lang = "en-US"
 nsfw_tag = "\x0304[NSFW]\x0F"
-data_limit = 69120
+data_limit = 204800  # bytes
 # --------------------- #
 
 
