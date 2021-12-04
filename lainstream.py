@@ -496,7 +496,7 @@ def main(i, irc):
         },
         "lain.la": {
             "url": "https://stream.lain.la",
-            "url-rtmp": "rtmp://lain.la",
+            "url-rtmp": "rtmp://stream.lain.la/hls/auth",
             "title": "",
             "streamer": ""
         }
