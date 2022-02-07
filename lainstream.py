@@ -22,7 +22,7 @@ lainchan_org_logo_rtmp = "\x0304Lainstream\x0F RTMP"
 lainchan_org_logo_ogv = "\x0304Lainstream\x0F OGV"
 
 lain_la_logo = "lain.la"
-lain_la_url_rtmp = "rtmp://stream.lain.la/hls"
+lain_la_url_rtmp = "rtmp://stream.lain.la/hls/auth"
 
 
 class Module:
@@ -496,6 +496,7 @@ def main(i, irc):
         },
         "lain.la": {
             "url": "https://stream.lain.la",
+            # TODO: Read the rtmp url, but add a function to update it from IRC
             "title": "",
             "streamer": ""
         }
