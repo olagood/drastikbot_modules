@@ -29,8 +29,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import datetime
 
-from dbothelper import is_ascii_cl
-from admin import is_bot_owner
+from dbothelper import is_ascii_cl  # type: ignore
+from admin import is_bot_owner  # type: ignore
 
 
 class Module:
@@ -172,6 +172,7 @@ def main(i, irc):
         return
 
     msgtarget = i.msg.get_msgtarget()
+    ch_pfx = i.bot["conf"].get_channel_prefix(msgtarget)
     nickname = i.msg.get_nickname()
     is_pm = i.msg.is_pm()
     text = i.msg.get_text()
@@ -183,7 +184,7 @@ def main(i, irc):
         return
 
     # Handle the `seen' command, if any.
-    if i.msg.is_botcmd("seen"):
+    if i.msg.is_botcmd("seen") and i.msg.is_botcmd_prefix(ch_pfx):
         seen(i, irc, db)
 
     # Save user messages.
