@@ -26,8 +26,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import datetime
 
-from dbothelper import is_ascii_cl
-from ignore import is_ignored
+from dbothelper import is_ascii_cl  # type: ignore
+from ignore import is_ignored  # type: ignore
 
 
 class Module:
@@ -77,13 +77,14 @@ def main(i, irc):
     dbc = db.cursor()
 
     msgtarget = i.msg.get_msgtarget()
+    ch_pfx = i.bot["conf"].get_channel_prefix(msgtarget)
     nickname = i.msg.get_nickname()
 
     botcmd = i.msg.get_botcmd()
     prefix = i.msg.get_botcmd_prefix()
     args = i.msg.get_args()
 
-    if "tell" == botcmd:
+    if "tell" == botcmd and i.msg.is_botcmd_prefix(ch_pfx):
         argv = args.split(" ", 1)
 
         try:
