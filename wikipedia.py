@@ -151,7 +151,11 @@ def mw_parse_intro(url, page, limit):
     html = r.json()['parse']['text']['*']
     soup = bs4.BeautifulSoup(html, bs4_parser)
     soup = text_cleanup(soup)
-    text = soup.find('p').text
+
+    text = ""
+    for p in soup.find_all('p'):
+        text += p.text
+
     if text == 'Redirect to:':
         n_title = soup.find('a').text
         n_text = mw_parse_intro(url, n_title, limit)
