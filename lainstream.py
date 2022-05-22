@@ -162,7 +162,8 @@ def radio(state, i, irc):
         c_title = j['current']['title']
         listeners = j['listeners']['current']
         m += (f"\x0305{channel} {listeners}\x0F:"
-              f" \x0302{c_artist} - {c_title}\x0F | https://lainon.life/")
+              f" \x0302{c_artist} - {c_title}\x0F")
+    m += " | https://lainon.life"
     irc.out.notice(msgtarget, m)
 
 
