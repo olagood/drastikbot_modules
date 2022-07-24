@@ -27,9 +27,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
-from dbothelper import is_ascii_cl  # type: ignore
+from dbothelper import is_ascii_cl, get_day_str, get_month_str  # type: ignore
 from admin import is_bot_owner  # type: ignore
 
 
@@ -52,7 +53,7 @@ class Module:
 
 
 def update(db, channel, nickname, message):
-    timestamp = str(datetime.datetime.utcnow().replace(microsecond=0))
+    timestamp = str(datetime.utcnow().replace(microsecond=0))
 
     with db:
         dbc = db.cursor()
@@ -80,19 +81,73 @@ def fetch(db, nickname):
     return dbc.fetchone()
 
 
-def init(db):
-    dbc = db.cursor()
-    sql = """
-        CREATE TABLE IF NOT EXISTS seen (
-               nick TEXT COLLATE NOCASE PRIMARY KEY,
-               msg TEXT,
-               time TEXT,
-               channel TEXT
-        );
-    """
-    dbc.execute(sql)
-    db.commit()
+# Output message preparation for .seen ###############################
 
+def prep_message(i, requested_nick, fetchdata):
+    msgtarget = i.msg.get_msgtarget()
+    nickname, msg, timestamp, channel = fetchdata
+    ago, weekday, day, month, year, time, tz = prep_datetime(i, timestamp)
+    is_ctcp_action, msg = prep_ctcp_action(msg)
+
+    m = "\x0312"
+
+    if is_ascii_cl(requested_nick, nickname):
+        m += "You\x0F were"
+    else:
+        m += f"{requested_nick}\x0F was"
+
+    m += (f" last seen \x0312{ago} ago\x0F"
+          f" [{weekday} {day} {month} {year} {time} {tz}]")
+
+    if is_ctcp_action:
+        m += ", doing"
+    else:
+        m += ", saying"
+
+    m += f" \x0312{msg}\x0F"
+
+    if channel != msgtarget:
+        m += f" in \x0312{channel}"
+
+    return m
+
+
+def prep_datetime(i, timestamp):
+    conf = i.bot["conf"]
+
+    d = datetime.fromisoformat(f"{timestamp}+00:00")
+
+    ago = datetime.now(timezone.utc).replace(microsecond=0) - d
+
+    # Get the timezone from the config file and convert the datetime object
+    # or remain in UTC
+    try:
+        tz = conf.conf["ui"]["timezone"]
+        # Add the timezone to get a timezone aware object
+        d = d.astimezone(tz=ZoneInfo(tz))
+    except KeyError:
+        tz = "UTC"
+
+    weekday = get_day_str(d.weekday())
+    month = get_month_str(d.month)
+
+    return ago, weekday, d.day, month, d.year, d.time(), tz
+
+
+def prep_ctcp_action(message):
+    is_ctcp_action = False
+    msg = message
+
+    if "\x01ACTION " in msg[:8]:
+        is_ctcp_action = True
+        msg = msg[8:]
+        if msg[-1] == "\x01":
+            msg = msg[:-1]
+
+    return is_ctcp_action, msg
+
+
+# Commands ###########################################################
 
 def seen(i, irc, db):
     msgtarget = i.msg.get_msgtarget()
@@ -105,62 +160,44 @@ def seen(i, irc, db):
     argc = len(argv)
 
     if not args:
-        rq_nick = nickname
+        requested_nick = nickname
     elif (argc == 1 and len(args) <= 30):
-        rq_nick = argv[0]
+        requested_nick = argv[0]
     else:
         m = f"Usage: {prefix}{botcmd} <nickname>"
         irc.out.notice(msgtarget, m)
         return
 
     # Check if the requested nickname is the bot's nickname
-    if rq_nick == irc.curr_nickname:
+    if requested_nick == irc.curr_nickname:
         m = "\x0304Who?\x0F"
         irc.out.notice(msgtarget, m)
         return
 
-    seen = fetch(db, rq_nick)
+    seen = fetch(db, requested_nick)
 
     if not seen:
         m = f"Sorry, I haven't seen \x0312{rq_nick}\x0F around"
         irc.out.notice(msgtarget, m)
-        return
-
-    # s_nickname = seen[0]
-    s_message = seen[1]
-    s_time = datetime.datetime.strptime(seen[2], "%Y-%m-%d %H:%M:%S")
-    s_channel = seen[3]
-
-    time_now = datetime.datetime.utcnow().replace(microsecond=0)
-    s_ago = time_now - s_time
-
-    ctcp_action = False
-    if "\x01ACTION " in s_message[:8]:
-        ctcp_action = True
-        s_message = s_message[8:]
-        if s_message[-1] == "\x01":
-            s_message = s_message[:-1]
-
-    m = "\x0312"
-
-    if is_ascii_cl(rq_nick, nickname):
-        m += "You\x0F were"
     else:
-        m += f"{rq_nick}\x0F was"
+        m = prep_message(i, requested_nick, seen)
+        irc.out.notice(msgtarget, m)
 
-    m += f" last seen \x0312{s_ago} ago\x0F [{s_time} UTC]"
 
-    if ctcp_action:
-        m += ", doing"
-    else:
-        m += ", saying"
+# Main ###############################################################
 
-    m += f" \x0312{s_message}\x0F"
-
-    if s_channel != msgtarget:
-        m += f" in \x0312{s_channel}"
-
-    irc.out.notice(msgtarget, m)
+def init(db):
+    dbc = db.cursor()
+    sql = """
+        CREATE TABLE IF NOT EXISTS seen (
+               nick TEXT COLLATE NOCASE PRIMARY KEY,
+               msg TEXT,
+               time TEXT,
+               channel TEXT
+        );
+    """
+    dbc.execute(sql)
+    db.commit()
 
 
 def main(i, irc):
