@@ -83,9 +83,11 @@ def fetch(db, nickname):
 
 # Output message preparation for .seen ###############################
 
-def prep_message(i, requested_nick, fetchdata):
+def prep_message(i, fetchdata):
     msgtarget = i.msg.get_msgtarget()
-    nickname, msg, timestamp, channel = fetchdata
+    nickname = i.msg.get_nickname()
+
+    requested_nick, msg, timestamp, channel = fetchdata
     ago, weekday, day, month, year, time, tz = prep_datetime(i, timestamp)
     is_ctcp_action, msg = prep_ctcp_action(msg)
 
@@ -180,7 +182,7 @@ def seen(i, irc, db):
         m = f"Sorry, I haven't seen \x0312{rq_nick}\x0F around"
         irc.out.notice(msgtarget, m)
     else:
-        m = prep_message(i, requested_nick, seen)
+        m = prep_message(i, seen)
         irc.out.notice(msgtarget, m)
 
 
