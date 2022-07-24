@@ -24,9 +24,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
-from dbothelper import is_ascii_cl  # type: ignore
+from dbothelper import is_ascii_cl, get_day_str, get_month_str # type: ignore
 from ignore import is_ignored  # type: ignore
 
 
@@ -90,7 +91,7 @@ def db_insert(i, receiver, msg, sender, msgtarget):
     db = i.db_disk
     dbc = db.cursor()
 
-    timestamp = datetime.datetime.utcnow().replace(microsecond=0)
+    timestamp = datetime.utcnow().replace(microsecond=0)
     sql = """
         INSERT INTO tell VALUES (?, ?, ?, ?, strftime('%s', 'now'), ?);
     """
@@ -118,7 +119,7 @@ def find(i, irc):
         return
 
     for x in fetch:
-        header, msg = prep_message(x)
+        header, msg = prep_message(i, x)
         irc.out.privmsg(nick, header)
         irc.out.privmsg(nick, msg)
 
@@ -133,10 +134,27 @@ def find(i, irc):
     db.commit()
 
 
-def prep_message(fetchdata):
+def prep_message(i, fetchdata):
+    conf = i.bot["conf"]
     sender, msg, timestamp, channel = fetchdata
 
-    header = f'\x02\x0312{sender}\x0F \x0315[{timestamp} UTC]\x0F'
+    d = datetime.fromisoformat(f"{timestamp}+00:00")
+
+    # Get the timezone from the config file and convert the datetime object
+    # or remain in UTC
+    try:
+        tz = conf.conf["ui"]["timezone"]
+        # Add the timezone to get a timezone aware object
+        d = d.astimezone(tz=ZoneInfo(tz))
+    except KeyError:
+        tz = "UTC"
+
+    weekday = get_day_str(d.weekday())
+    month = get_month_str(d.month)
+
+    header = (f'\x02\x0312{sender}\x0F'
+              f' \x0315[{weekday} {d.day} {month} {d.year}'
+              f' {d.time()} {tz}]\x0F')
     if sender == channel:
         header += " \x0304[Private]\x0F:"
     else:
