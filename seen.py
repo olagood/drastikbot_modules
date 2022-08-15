@@ -179,7 +179,7 @@ def seen(i, irc, db):
     seen = fetch(db, requested_nick)
 
     if not seen:
-        m = f"Sorry, I haven't seen \x0312{rq_nick}\x0F around"
+        m = f"Sorry, I haven't seen \x0312{requested_nick}\x0F around"
         irc.out.notice(msgtarget, m)
     else:
         m = prep_message(i, seen)
