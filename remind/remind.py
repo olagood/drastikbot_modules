@@ -164,7 +164,6 @@ def _parse_interval(text, acc):
         rest = ""
 
     interval = int(digits) * multiplier
-    print(rest)
 
     if rest[:3].lower() == "and":
         return _parse_interval(rest[3:].strip(), acc + interval)
