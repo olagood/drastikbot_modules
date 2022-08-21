@@ -76,9 +76,13 @@ def add_reminder(db, receiver, added_by, message, channel, timestamp):
     return dbc.lastrowid
 
 
-def delete_reminder(db, id):
+def delete_reminder(db, id, receiver):
     dbc = db.cursor()
-    dbc.execute("DELETE FROM remind WHERE id = ?;", (id,))
+    sql = """
+        DELETE FROM remind
+        WHERE id = ? AND (receiver = ? OR added_by = ?);
+    """
+    dbc.execute(sql, (id, receiver, receiver))
     db.commit()
 
 
@@ -122,6 +126,7 @@ calendricals = {
 
 def parse_interval(text):
     return _parse_interval(text, 0)
+
 
 def _parse_interval(text, acc):
     digits, rest = parse_digits(text)
@@ -311,6 +316,7 @@ def remind_common(i, irc, db, receiver: str, rest: str):
 
 def remind_delete(i, irc, db):
     msgtarget = i.msg.get_msgtarget()
+    nickname = i.msg.get_nickname()
     args = i.msg.get_args()
 
     argv = args.split()
@@ -322,7 +328,7 @@ def remind_delete(i, irc, db):
 
     id = args
 
-    delete_reminder(db, id)
+    delete_reminder(db, id, nickname)
 
     irc.out.notice(msgtarget, msg_deleted(i, id))
 
