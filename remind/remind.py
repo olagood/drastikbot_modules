@@ -148,6 +148,8 @@ def _parse_interval(text, acc):
     calendrical = tokens[0]
     if calendrical[-1] == ",":  # As in 1day, 2hours
         calendrical = calendrical[:-1]
+        if len(tokens) == 2:  # put the "," in the `rest' part
+            tokens[1] = "," + tokens[1]
 
     # Try to match capitalized shortcuts
     multiplier = calendricals.get(calendrical, False)
