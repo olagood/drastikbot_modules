@@ -121,15 +121,30 @@ calendricals = {
 
 
 def parse_interval(text):
+    return _parse_interval(text, 0)
+
+def _parse_interval(text, acc):
     digits, rest = parse_digits(text)
     if not digits:
-        return None
+        if acc == 0:
+            return None
+        else:
+            return acc, text
 
     rest = rest.strip()
-    tokens = rest.split(" ", 1)
+    tokens = rest.split(",", 1)
+
+    if len(tokens) < 2:
+        tokens = rest.split(" ", 1)
+    else:
+        # Put the comma back in
+        tokens[1] = "," + tokens[1]
 
     if not tokens:
-        return None
+        if acc == 0:
+            return None
+        else:
+            return acc, text
 
     calendrical = tokens[0]
 
@@ -144,13 +159,19 @@ def parse_interval(text):
         return None
 
     try:
-        rest = tokens[1]
+        rest = tokens[1].strip()
     except IndexError:
         rest = ""
 
     interval = int(digits) * multiplier
+    print(rest)
 
-    return interval, rest
+    if rest[:3].lower() == "and":
+        return _parse_interval(rest[3:].strip(), acc + interval)
+    elif rest[:1] == ",":
+        return _parse_interval(rest[1:].strip(), acc + interval)
+    else:
+        return acc + interval, rest
 
 
 def parse_digits(text):
