@@ -137,14 +137,8 @@ def _parse_interval(text, acc):
             return acc, text
 
     rest = rest.strip()
-    tokens = rest.split(",", 1)
 
-    if len(tokens) < 2:
-        tokens = rest.split(" ", 1)
-    else:
-        # Put the comma back in
-        tokens[1] = "," + tokens[1]
-
+    tokens = rest.split(" ", 1)
     if not tokens:
         if acc == 0:
             return None
