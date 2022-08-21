@@ -205,14 +205,14 @@ def msg_remind_delete_usage(i):
     return f"Usage: {ch_pfx}{botcmd} <id>"
 
 
-def format_datetime(i, datetime) -> str:
+def format_datetime(i, dt) -> str:
     conf = i.bot["conf"]
 
     # Get the timezone from the config file and convert the datetime object
     # or remain in UTC
     try:
         tz = conf.conf["ui"]["timezone"]
-        dt = datetime.astimezone(tz=ZoneInfo(tz))
+        dt = dt.astimezone(tz=ZoneInfo(tz))
     except KeyError:
         tz = "UTC"
 
