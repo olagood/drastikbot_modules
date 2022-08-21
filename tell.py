@@ -27,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
-from dbothelper import is_ascii_cl, get_day_str, get_month_str # type: ignore
+from dbothelper import is_ascii_cl, get_day_str, get_month_str  # type: ignore
 from ignore import is_ignored  # type: ignore
 
 
