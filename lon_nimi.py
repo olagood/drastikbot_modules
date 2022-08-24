@@ -25,7 +25,7 @@ import socket
 
 
 class Module:
-    bot_commands = ["lon-nimi", "lon_nimi", "toki-pona", "toki_pona"]
+    bot_commands = ["tp", "lon-nimi", "lon_nimi", "toki-pona", "toki_pona"]
 
     manual = {
         "desc": ("Translate toki pona words to english using lon nimi."
@@ -77,8 +77,12 @@ def main(i, irc):
         m = ("lon nimi: Your word is too long.")
     elif m == b"ike a":
         m = ("lon nimi: Your input is not toki pona.")
+    elif m == b"ala":
+        m = ("lon nimi: This word is unknown but seemingly valid")
     else:
-        tokens = [x.decode("utf-8") for x in m.split(b" ", 1)]
-        m = f"lon nimi: {tokens[0].strip()} -> {tokens[1].strip()}"
+        m = m.decode("utf-8")
+        english, tokipona = [x.strip() for x in m.split(" ", 1)]
+        tokipona = ' '.join(tokipona.split())  # Remove excess whitespace
+        m = f"lon nimi: {english} -> {tokipona}"
 
     irc.out.notice(msgtarget, m)
