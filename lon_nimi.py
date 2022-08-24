@@ -78,7 +78,7 @@ def main(i, irc):
     elif m == b"ike a":
         m = ("lon nimi: Your input is not toki pona.")
     elif m == b"ala":
-        m = ("lon nimi: This word is unknown but seemingly valid")
+        m = ("lon nimi: This word is unknown but may be valid")
     else:
         m = m.decode("utf-8")
         english, tokipona = [x.strip() for x in m.split(" ", 1)]
