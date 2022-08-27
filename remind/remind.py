@@ -86,6 +86,25 @@ def delete_reminder(db, id, receiver):
     db.commit()
 
 
+def is_deleted(db, id) -> bool:
+    dbc = db.cursor()
+    sql = """
+        SELECT * FROM remind WHERE id = ?;
+    """
+    dbc.execute(sql, (id,))
+    return dbc.fetchone() is None
+
+
+def has_delete_rights(db, id, nickname) -> bool:
+    dbc = db.cursor()
+    sql = """
+        SELECT * FROM remind
+        WHERE id = ? AND (receiver = ? OR added_by = ?);
+    """
+    dbc.execute(sql, (id, nickname, nickname))
+    return (not (dbc.fetchone() is None))
+
+
 # Date expression parser #############################################
 
 calendricals = {
@@ -325,6 +344,16 @@ def remind_delete(i, irc, db):
         return
 
     id = args
+
+    if is_deleted(db, id):
+        m = f"{nickname}: Reminder #{id} could not be found."
+        irc.out.notice(msgtarget, m)
+        return
+
+    if not has_delete_rights(db, id, nickname):
+        m = f"{nickname}: Looks like you cannot delete this reminder."
+        irc.out.notice(msgtarget, m)
+        return
 
     delete_reminder(db, id, nickname)
 
