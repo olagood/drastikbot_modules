@@ -314,15 +314,17 @@ def get_urls_from_text(text):
 
 def get_titles_from_text(text, limit=0):
     prev_u = set()  # Already visited URLs, used to avoid spamming.
-    limit_acc = limit
+    count = 0
 
     for u in get_urls_from_text(text):
         if u in prev_u:
             continue
 
-        if limit_acc <= 0:
+        if limit > 0 and count >= limit:
             yield ("limit", None)
-            break
+            return
+        else:
+            count += 1
 
         title = get_title(u)
         if not title:
