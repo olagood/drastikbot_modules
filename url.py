@@ -308,21 +308,40 @@ def get_title(u):
     return title
 
 
+def get_urls_from_text(text):
+    return filter((lambda x: x.startswith("http")), text.split())
+
+
+def get_titles_from_text(text, limit=0):
+    prev_u = set()  # Already visited URLs, used to avoid spamming.
+    limit_acc = limit
+
+    for u in get_urls_from_text(text):
+        if u in prev_u:
+            continue
+
+        if limit_acc <= 0:
+            yield ("limit", None)
+            break
+
+        title = get_title(u)
+        if not title:
+            continue
+        else:
+            yield ("title", title)
+
+
 def main(i, irc):
     msgtarget = i.msg.get_msgtarget()
     text = i.msg.get_message().strip()
     text = str(text).split(' :', 1)[1][:-1]
     text = remove_formatting(text)
 
-    prev_u = set()  # Already visited URLs, used to avoid spamming.
-
-    for u in filter(lambda x: x.startswith("http"), text.split()):
-        if u in prev_u:
-            continue
-
-        title = get_title(u)
-        if not title:
-            continue
+    for (status, title) in get_titles_from_text(text, limit=5):
+        if status == "limit":
+            nickname = i.msg.get_nickname()
+            m = "[url] {nickname}: Max number of URLs per post (5) reached."
+            irc.out.notice(msgtarget, m)
+            return
 
         irc.out.notice(msgtarget, title)
-        prev_u.add(u)
