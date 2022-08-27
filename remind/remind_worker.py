@@ -89,9 +89,9 @@ def msg_reminder(id, receiver, added_by, message, channel, timestamp):
     if receiver == added_by:
         head = "You asked me to remind you:"
     elif receiver == channel:
-        head = f"{receiver} asked me in private to remind you:"
+        head = f"{added_by} asked me in private to remind you:"
     else:
-        head = f"{receiver} asked me in {channel} to remind you:"
+        head = f"{added_by} asked me in {channel} to remind you:"
 
     return head, message
 
