@@ -42,6 +42,7 @@ user_agent = "w3m/0.52"
 accept_lang = "en-US"
 nsfw_tag = "\x0304[NSFW]\x0F"
 data_limit = 204800  # bytes
+url_limit = 3  # Number of handled urls per post
 # --------------------- #
 
 
@@ -339,10 +340,10 @@ def main(i, irc):
     text = str(text).split(' :', 1)[1][:-1]
     text = remove_formatting(text)
 
-    for (status, title) in get_titles_from_text(text, limit=5):
+    for (status, title) in get_titles_from_text(text, limit=url_limit):
         if status == "limit":
             nickname = i.msg.get_nickname()
-            m = "[url] {nickname}: Max number of URLs per post (5) reached."
+            m = f"[url] The max number of URLs per post is ({url_limit})"
             irc.out.notice(msgtarget, m)
             return
 
