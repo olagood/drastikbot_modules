@@ -6,6 +6,10 @@
 # It works "like" memoserv.
 # A user tells the bot to tell a message to a nick when that nick is seen.
 # .tell drastik drastikbot is down | .tell <NICKNAME> <MESSAGE>
+#
+# Depends
+# -------
+# drastikbot_modules: url.py
 
 '''
 Copyright (C) 2017, 2021-2022 drastik.org
@@ -29,6 +33,13 @@ from zoneinfo import ZoneInfo
 
 from dbothelper import is_ascii_cl, get_day_str, get_month_str  # type: ignore
 from ignore import is_ignored  # type: ignore
+
+# Try to import the url module from drastikbot_modules to provide url titles.
+try:
+    import url
+    url_support = True
+except ImportError:
+    url_support = False
 
 
 class Module:
@@ -122,6 +133,11 @@ def find(i, irc):
         header, msg = prep_message(i, x)
         irc.out.privmsg(nick, header)
         irc.out.privmsg(nick, msg)
+        # Also show the titles for any urls in the msg
+        if not url_support:
+            continue
+        for (_status, title) in url.get_titles_from_text(msg, limit=3):
+            irc.out.privmsg(nick, title)
 
     dbc.execute("DELETE FROM tell WHERE receiver=?;", (nick,))
     # Delete messages older than 3600 * 24 * 30 * 3 seconds.
