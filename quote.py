@@ -32,7 +32,12 @@ from admin import is_bot_owner
 
 class Module:
     startup = True
-    bot_commands = ["quote", "quote-search", "quote-add", "quote-del",
+    bot_commands = ["quote",
+                    # Add quotes aliases
+                    "quote-add", "add-quote", "addquote", "quoteadd",
+                    "quote_add", "add_quote",
+                    # Others
+                    "quote-del", "quote-search",
                     "quote-match", "quote-list-mentioned",
                     "quote-initialize"]
     manual = {
@@ -719,14 +724,20 @@ def quote_list_mentioned(i, irc, dbc):
 # ====================================================================
 
 dispatch = {
-    "__STARTUP": lambda i, irc, dbc: db_init(dbc),
+    "__STARTUP": lambda _i, _irc, dbc: db_init(dbc),
     "quote-initialize": quote_initialize,
     "quote": quote,
     "quote-search": quote_search,
     "quote-match": quote_match,
-    "quote-add": quote_add,
     "quote-del": quote_del,
-    "quote-list-mentioned": quote_list_mentioned
+    "quote-list-mentioned": quote_list_mentioned,
+    # Quote add aliases
+    "quote-add": quote_add,
+    "add-quote": quote_add,
+    "addquote": quote_add,
+    "quoteadd": quote_add,
+    "quote_add": quote_add,
+    "add_quote": quote_add,
 }
 
 
