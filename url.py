@@ -301,7 +301,7 @@ def _get_title_from_title(title, data):
 def get_title(u):
     try:
         title, data = _get_title_from_host(u)
-    except AttributeError:  # `u' is not a URL and the host is None.
+    except Exception:  # Unable to get the title
         return ""
 
     if data:
