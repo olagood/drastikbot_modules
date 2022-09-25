@@ -30,10 +30,9 @@ import traceback
 
 import urllib.parse
 import json
-import requests
-import bs4
+import requests  # type:ignore
 
-import url
+from irc.modules import log  # type:ignore
 
 
 class Module:
@@ -110,70 +109,38 @@ def yt_search(query):
             continue  # Skip promoted videos
 
 
-def output(i):
+def output(i, o):
+    conf = i.bot["conf"].conf
+
     '''Format the output message to be returned.'''
     # logo_yt = "\x0301,00You\x0300,04Tube\x0F"
     logo_yt = "\x0300,04 ► \x0F"
 
-    if i["date"]:
-        date = f" | \x02Uploaded:\x0F {i['date']}"
+    if o["date"]:
+        date = f" | \x02Uploaded:\x0F {o['date']}"
     else:
         date = ""
 
-    return (f"{logo_yt}: {i['short_url']} | "
-            f"\x02{i['name']}\x0F ({i['duration']})"
-            f" | \x02Views:\x0F {i['views']}"
-            f" | \x02Channel\x0F: {i['channel']}"
-            f"{date}")
+    try:
+        alt = f" | \x02Alt:\x0F {conf['module:youtube']['alt']}{o['yt_id']}"
+    except KeyError:
+        alt = ""
+    except Exception as e:
+        log.debug(f"[module:youtube]: {e}\n{traceback.format_exc()}")
+        alt = ""
+
+    return (f"{logo_yt}: {o['short_url']} | "
+            f"\x02{o['name']}\x0F ({o['duration']})"
+            f" | \x02Views:\x0F {o['views']}"
+            f" | \x02Channel\x0F: {o['channel']}"
+            f"{date}"
+            f"{alt}")
 
 
-#
-# Old parser
-#
-
-def yt_search_legacy(query):
-    '''
-    Search YouTube for 'query' and get a video from the search results.
-    It tries to visit the video found to ensure that it is valid.
-    Returns:
-        - 'yt_id' : The YouTube ID of the result video.
-        - False   : If no video is found for 'query'.
-    '''
-    search = (f'https://m.youtube.com/results?search_query={query}')
-    r = requests.get(search, headers={"Accept-Language": lang}, timeout=10)
-    #print(r.text, file=open("output.html", "a"))
-    soup = bs4.BeautifulSoup(r.text, parser)
-    for s in soup.find_all('a', {'class': ['yt-uix-tile-link']}):
-        yt_id = urllib.parse.urlparse(s.get('href')).query
-        print(yt_id)
-        yt_id = urllib.parse.parse_qs(yt_id)
-        print(yt_id)
-        try:
-            yt_id = yt_id['v'][0]
-        except KeyError:
-            try:
-                yt_id = yt_id['video_id'][0]
-            except KeyError:
-                continue
-        yt_id = ''.join(yt_id.split())
-        # Try to visit the url to make sure it's a valid one.
-        try:
-            u = f'https://m.youtube.com/watch?v={yt_id}'
-            requests.get(u, timeout=10)
-            break
-        except Exception:
-            pass
-    else:
-        return False
-    return yt_id
-
-
-def output_legacy(yt_id):
-    '''Format the output message to be returned.'''
-    logo_yt = "\x0300,04 ► \x0F (legacy)"
-    short_url = f"https://youtu.be/{yt_id}"
-    title = url.youtube(short_url)
-    return f"{logo_yt}: {short_url} | {title}"
+def output_error(err):
+    '''Show an error message to the user'''
+    logo_yt = "\x0300,04 ► \x0F"
+    return f"{logo_yt}: Unable to find a video. Error {err}"
 
 
 def main(i, irc):
@@ -182,9 +149,9 @@ def main(i, irc):
 
     query = urllib.parse.quote(args, safe="")
     try:
-        m = output(yt_search(query))
-    except Exception:
-        print(traceback.format_exc())
-        m = output_legacy(yt_search_legacy(query))
+        m = output(i, yt_search(query))
+    except Exception as e:
+        log.debug(f"[module:youtube]: {e}\n{traceback.format_exc()}")
+        m = output_error(e)
 
     irc.out.notice(msgtarget, m)
