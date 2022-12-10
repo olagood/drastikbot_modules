@@ -53,7 +53,8 @@ class Module:
             "they post to a channel that the bot has joined."
         ),
         "bot_commands": {
-            "tell": {"usage": lambda x: f"{x}tell <receiver> <message>"}
+            "tell": {"usage": lambda x: f"{x}tell <receiver> <message>"},
+            "yell": {"usage": lambda x: f"{x}yell <receiver> <message>"}
         }
     }
 
@@ -62,7 +63,7 @@ class Module:
 # Insert messages in the db
 # ====================================================================
 
-def add(i, irc):
+def add(i, irc, upper=False):
     msgtarget = i.msg.get_msgtarget()
     nickname = i.msg.get_nickname()
 
@@ -79,6 +80,9 @@ def add(i, irc):
         m = f"Usage: {prefix}{botcmd} <receiver> <message>"
         irc.out.notice(msgtarget, m)
         return
+
+    if upper:
+        message = message.upper()
 
     if is_ascii_cl(irc.curr_nickname, receiver):
         m = f"{nickname}: I am here now, tell me."
@@ -229,3 +233,6 @@ def main(i, irc):
 
         if "tell" == botcmd:
             add(i, irc)
+
+        if "yell" == botcmd:
+            add(i, irc, upper=True)
