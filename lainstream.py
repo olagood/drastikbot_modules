@@ -22,7 +22,6 @@ lainchan_org_logo_rtmp = "\x0304Lainstream\x0F RTMP"
 lainchan_org_logo_ogv = "\x0304Lainstream\x0F OGV"
 
 lain_la_logo = "lain.la"
-lain_la_url_rtmp = "rtmp://stream.lain.la/hls/auth"
 
 
 class Module:
@@ -363,7 +362,7 @@ def lain_la_status(state):
     url = state["lain.la"]["url"]
     return (f"{lain_la_logo}:"
             f" \x0311{title}\x0F by \x0302{streamer}\x0F"
-            f" | Watch at: {url} | RTMP: {lain_la_url_rtmp}")
+            f" | Watch at: {url}")
 
 
 def lain_la_set(state, title, streamer):
