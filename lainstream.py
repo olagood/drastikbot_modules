@@ -34,7 +34,8 @@ class Module:
                     "streamunset", "streamunset-rtmp", "streamunset-ogv",
                     "streamurls",
                     # lain.la
-                    "streamset-la", "streamerset-la", "streamunset-la"]
+                    "streamset-la", "streamerset-la", "streamunset-la",
+                    "urlset-la"]
     manual = {
         "desc": "Stream and radio information for lainchan.org.",
         "bot_commands": {
@@ -102,7 +103,11 @@ class Module:
             "streamunset-la": {
                 "usage": lambda x: f"{x}streamunset-la",
                 "info": ("Unset the title and the streamer for lain.la's"
-                         " stream.")}
+                         " stream.")},
+            "urlset-la": {
+                "usage": lambda x: f"{x}urlset-la <url>",
+                "info": ("Change the URL for the lain.la stream")
+            }
         }
     }
 
@@ -419,6 +424,21 @@ def lain_la_streamer_set(state, i, irc):
     return state
 
 
+def lain_la_url_set(state, i, irc):
+    msgtarget = i.msg.get_msgtarget()
+
+    url = i.msg.get_args()
+
+    if not url:
+        irc.out.notice(msgtarget, "Usage: .urlset-la <URL>")
+        return
+
+    state["lain.la"]["url"] = url
+    m = f"{lain_la_logo}: Stream URL updated!"
+    irc.out.notice(msgtarget, m)
+    return state
+
+
 # ====================================================================
 # IRC: Generic callbacks
 # ====================================================================
@@ -470,7 +490,8 @@ callbacks = {
     # lain.la
     "streamset-la": lain_la_stream_set,
     "streamerset-la": lain_la_streamer_set,
-    "streamunset-la": lain_la_stream_unset
+    "streamunset-la": lain_la_stream_unset,
+    "urlset-la": lain_la_url_set
 }
 
 
@@ -497,7 +518,6 @@ def main(i, irc):
         },
         "lain.la": {
             "url": "https://stream.lain.la",
-            # TODO: Read the rtmp url, but add a function to update it from IRC
             "title": "",
             "streamer": ""
         }
